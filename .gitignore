@@ -1,0 +1,46 @@
+# Node modules (если есть npm-пакеты)
+node_modules/
+
+# Python серверные файлы (если был запуск http.server)
+__pycache__/
+*.pyc
+
+# Бинарные файлы Go
+*.exe
+*.out
+*.test
+
+# Кэш Go
+go.sum
+
+# Конфигурации IDE и редакторов
+.vscode/
+.idea/
+
+# Логи
+*.log
+
+# Файлы системы
+.DS_Store
+Thumbs.db
+
+# База данных, дампы
+*.sql
+*.sqlite
+
+# Кастомные окружения
+.env
+.env.local
+.env.*.local
+
+# Frontend билд-файлы (если буду использовать сборщики)
+dist/
+build/
+
+# Git временные файлы
+*.orig
+
+# Бэкапы
+*.bak
+*.tmp
+~$*
