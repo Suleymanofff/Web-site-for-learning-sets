@@ -109,8 +109,8 @@
 - **Frontend:** HTML, CSS, JavaScript
 - **Backend:** Go (Golang)
 - **База данных:** PostgreSQL
-- **Аутентификация:** JWT (планируется)
-- **Деплой:** GitHub Pages / Vercel / Heroku (пока тестируется)
+- **Аутентификация:** JWT
+- **Деплой:** (пока тестируется)
 
 ---
 
