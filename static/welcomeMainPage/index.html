@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Главная — Set Learn</title>
+
+		<!-- 1. Сначала — инициализация темы -->
+		<script src="/static/js/theme-init.js"></script>
+
+		<link rel="stylesheet" href="style.css" />
+		<script src="script.js" defer></script>
+	</head>
+	<body>
+		<!-- Навигационная панель для незарегистрированных -->
+		<header class="navbar">
+			<div class="actions">
+				<!-- Переключатель темы -->
+				<button id="theme-toggle" aria-label="Переключить тему">
+					<img src="/static/img/dark-theme.png" alt="dark-theme-toggle" />
+				</button>
+			</div>
+			<!-- Ссылка на страницу входа/регистрации -->
+			<div class="auth-link">
+				<a href="/static/loginPage/">Зарегистрироваться/Войти</a>
+			</div>
+		</header>
+
+		<!-- Основной контент: плитки закрытого доступа -->
+		<main class="container">
+			<div class="tile" data-title="Пошаговая анимация">
+				<h2><span class="lock-icon">🔒</span>Пошаговая анимация</h2>
+				<p>
+					Просмотр интерактивной демонстрации ассоциативного свойства множеств
+				</p>
+			</div>
+			<div class="tile" data-title="Курсы">
+				<h2><span class="lock-icon">🔒</span>Курсы</h2>
+				<p>Курсы по темам, которые вы проходите на данный момент</p>
+			</div>
+			<div class="tile" data-title="Тесты">
+				<h2><span class="lock-icon">🔒</span>Тесты</h2>
+				<p>Тесты, которые вам доступны на данный момент</p>
+			</div>
+			<div class="tile" data-title="Лидерборд">
+				<h2><span class="lock-icon">🔒</span>Лидерборд</h2>
+			</div>
+			<div class="tile" data-title="Теория">
+				<h2><span class="lock-icon">🔒</span>Теория</h2>
+			</div>
+		</main>
+
+		<!-- Модальное окно с уведомлением о регистрации -->
+		<div id="access-modal" class="modal">
+			<div class="modal-content">
+				<span class="close">&times;</span>
+				<p>
+					Для получения доступа необходимо
+					<a href="/static/loginPage/">зарегистрироваться или войти</a>.
+				</p>
+			</div>
+		</div>
+	</body>
+</html>

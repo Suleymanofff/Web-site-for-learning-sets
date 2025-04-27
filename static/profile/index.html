@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Личный кабинет — Set Learn</title>
+
+		<!-- 1. Сначала — инициализация темы -->
+		<script src="/static/js/theme-init.js"></script>
+
+		<link rel="stylesheet" href="/static/profile/style.css" />
+		<script src="/static/profile/script.js" defer></script>
+	</head>
+	<body>
+		<!-- Единое верхнее меню -->
+		<header class="navbar">
+			<div class="logo">Set Learn</div>
+			<nav class="nav-links">
+				<a href="/static/mainPage/">Главная</a>
+				<a href="/static/courses/">Курсы</a>
+				<a href="/static/questions/">Тесты</a>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="userDefaultImg" />
+				</div>
+			</div>
+		</header>
+
+		<div class="avatar-wrapper">
+			<img id="avatar" src="/static/uploads/default.png" alt="Avatar" />
+			<img
+				id="change-icon"
+				class="change-icon"
+				src="/static/img/change-icon-img.png"
+				alt="Change"
+			/>
+			<button
+				id="remove-avatar-btn"
+				class="remove-avatar-btn"
+				title="Удалить аватар"
+			>
+				✕
+			</button>
+			<input
+				id="avatar-input"
+				type="file"
+				accept="image/*"
+				style="display: none"
+			/>
+		</div>
+		<!-- Подтверждающий попап на удаление фотки профиля -->
+		<div id="confirm-modal" class="modal-overlay">
+			<div class="modal">
+				<p>Вы действительно хотите удалить фото?</p>
+				<div class="modal-actions">
+					<button id="confirm-yes" class="btn btn-primary">Да</button>
+					<button id="confirm-no" class="btn btn-secondary">Нет</button>
+				</div>
+			</div>
+		</div>
+
+		<main class="profile-container">
+			<h1>Личный кабинет</h1>
+			<div class="profile-card">
+				<p><strong>Имя:</strong> <span id="fullName"></span></p>
+				<p><strong>Email:</strong> <span id="email"></span></p>
+				<p><strong>Тема:</strong> <span id="theme"></span></p>
+				<p><strong>Активен:</strong> <span id="isActive"></span></p>
+				<p><strong>Создан:</strong> <span id="createdAt"></span></p>
+				<p><strong>Последний вход:</strong> <span id="lastLogin"></span></p>
+			</div>
+			<div class="profile-logout">
+				<button id="logout-btn" class="logout-btn">Выйти</button>
+			</div>
+		</main>
+	</body>
+</html>

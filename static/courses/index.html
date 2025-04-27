@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Курсы — Set Learn</title>
+
+		<!-- 1. Сначала — инициализация темы -->
+		<script src="/static/js/theme-init.js"></script>
+
+		<!-- Общие стили и скрипт с поддержкой темы -->
+		<link rel="stylesheet" href="style.css" />
+		<script src="script.js" defer></script>
+	</head>
+	<body>
+		<!-- Навигационная панель -->
+		<header class="navbar">
+			<div class="logo">Set Learn</div>
+			<nav class="nav-links">
+				<a href="/static/mainPage/">Главная</a>
+				<a href="/static/courses/" class="active">Курсы</a>
+				<a href="/static/questions/">Тесты</a>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему">
+					<img src="/static/img/dark-theme.png" alt="dark-theme-toggle" />
+				</button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="userDefaultImg" />
+				</div>
+			</div>
+		</header>
+
+		<!-- Основной контент страницы Курсы -->
+		<main class="page-content">
+			<h1>Курсы</h1>
+			<!-- Список курсов -->
+			<div class="courses-list">
+				<!-- Например, карточки курсов -->
+				<p>Здесь будут отображаться доступные курсы.</p>
+			</div>
+		</main>
+	</body>
+</html>

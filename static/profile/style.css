@@ -1,0 +1,306 @@
+/* -----------------------------
+   1. Сброс отступов и box-sizing
+----------------------------- */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+/* =================================
+   2. Базовые настройки страницы
+================================= */
+html {
+	font-size: 16px;
+	scroll-behavior: smooth;
+}
+
+body {
+	font-family: 'Inter', sans-serif;
+	line-height: 1.6;
+	background-color: var(--bg);
+	color: var(--text);
+	min-height: 100vh;
+	transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* =================================
+   3. Переменные для тем и отступов
+================================= */
+:root {
+	--bg: #f9fafb;
+	--text: #1f2937;
+	--card-bg: #ffffff;
+	--border: #e5e7eb;
+	--primary: #4f46e5;
+	--text-muted: #6b7280;
+
+	--sp-xxs: 0.25rem;
+	--sp-xs: 0.5rem;
+	--sp-sm: 1rem;
+	--sp-md: 1.5rem;
+	--sp-lg: 2rem;
+
+	--radius: 0.5rem;
+	--trans: 0.3s ease;
+}
+
+:root[data-theme='dark'] {
+	--bg: #1f2937;
+	--text: #f9fafb;
+	--card-bg: #2d3748;
+	--border: #4a5568;
+	--primary: #a78bfa;
+	--text-muted: #a0aec0;
+}
+
+/* =================================
+   4. Стили для навигационной панели
+================================= */
+.navbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background-color: var(--card-bg);
+	padding: var(--sp-xs) var(--sp-md);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+	position: sticky;
+	top: 0;
+	z-index: 100;
+	transition: background-color 0.5s ease;
+}
+
+.logo {
+	font-size: 1.25rem;
+	font-weight: 700;
+	color: var(--primary);
+}
+
+.nav-links {
+	display: flex;
+	gap: var(--sp-md);
+}
+
+.nav-links a {
+	position: relative;
+	text-decoration: none;
+	color: var(--text-muted);
+	font-weight: 500;
+	padding: var(--sp-xxs) 0;
+	transition: color var(--trans);
+}
+
+.nav-links a.active,
+.nav-links a:hover {
+	color: var(--primary);
+}
+.nav-links a.active::after,
+.nav-links a:hover::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	bottom: -2px;
+	width: 100%;
+	height: 2px;
+	background-color: var(--primary);
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+}
+
+#theme-toggle {
+	background: none;
+	border: none;
+	font-size: 1.25rem;
+	cursor: pointer;
+	margin-right: var(--sp-sm);
+	transition: transform 0.2s;
+}
+#theme-toggle:hover {
+	transform: scale(1.1);
+}
+
+.user-icon img {
+	width: 2rem;
+	height: 2rem;
+	border-radius: 50%;
+	object-fit: cover;
+	cursor: pointer;
+	transition: transform var(--trans);
+}
+.user-icon img:hover {
+	transform: scale(1.1);
+}
+
+/* =================================
+   5. Стили профиля
+================================= */
+.avatar-wrapper {
+	position: relative;
+	width: 120px;
+	height: 120px;
+	margin-top: 50px; /* вниз */
+	margin-left: 140px; /* вправо */
+}
+.avatar-wrapper img#avatar {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	border-radius: 50%;
+	border: 2px solid var(--border);
+	transition: border-color var(--trans);
+}
+.avatar-wrapper img#avatar:hover {
+	border-color: var(--primary);
+}
+
+/* Иконка «карандашика» для смены фото */
+.change-icon {
+	position: absolute;
+	bottom: 0;
+	right: 0;
+	width: 32px;
+	height: 32px;
+	cursor: pointer;
+	transition: transform var(--trans);
+}
+.change-icon:hover {
+	transform: scale(1.1);
+}
+
+/* Кнопка удаления фотки профиля */
+.remove-avatar-btn {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	border: none;
+	background: var(--border);
+	color: var(--text);
+	width: 24px;
+	height: 24px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+}
+.remove-avatar-btn:hover {
+	background: var(--primary);
+	color: #fff;
+}
+
+/* ===== Подтверждающий модал ===== */
+.modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.4);
+	display: none; /* по умолчанию скрыт */
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+	transition: opacity var(--trans);
+}
+.modal-overlay.show {
+	display: flex;
+	opacity: 1;
+}
+
+.modal {
+	background: var(--card-bg);
+	color: var(--text);
+	padding: var(--sp-lg);
+	border-radius: var(--radius);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	max-width: 320px;
+	text-align: center;
+}
+
+.modal p {
+	margin-bottom: var(--sp-md);
+}
+
+.modal-actions {
+	display: flex;
+	justify-content: center;
+	gap: var(--sp-md);
+}
+
+.modal .btn {
+	padding: var(--sp-xs) var(--sp-md);
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+	font-weight: 500;
+}
+.btn-primary {
+	background: var(--primary);
+	color: #fff;
+}
+.btn-primary:hover {
+	opacity: 0.9;
+}
+.btn-secondary {
+	background: var(--border);
+	color: var(--text);
+}
+.btn-secondary:hover {
+	background: var(--primary);
+	color: #fff;
+}
+
+.profile-container {
+	max-width: 600px;
+	margin: 2rem auto;
+	padding: var(--sp-md);
+}
+
+.profile-card {
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: var(--sp-md);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.profile-card p {
+	margin-bottom: var(--sp-sm);
+}
+
+.profile-logout {
+	text-align: center;
+	margin-top: var(--sp-lg);
+}
+
+.logout-btn {
+	background-color: var(--primary);
+	color: #fff;
+	font-size: 1rem;
+	padding: var(--sp-xs) var(--sp-md);
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: transform var(--trans), opacity var(--trans);
+}
+.logout-btn:hover {
+	transform: scale(1.02);
+	opacity: 0.9;
+}
+
+/* =================================
+   6. Адаптив для мобильных
+================================= */
+@media (max-width: 600px) {
+	.navbar {
+		flex-direction: column;
+		gap: var(--sp-xs);
+	}
+	.nav-links {
+		flex-wrap: wrap;
+		justify-content: center;
+	}
+}

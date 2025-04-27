@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Пошаговая анимация — Set Learn</title>
+
+		<!-- 1. Сначала — инициализация темы -->
+		<script src="/static/js/theme-init.js"></script>
+
+		<!-- Общие стили и скрипт с поддержкой светлой/тёмной темы -->
+		<link rel="stylesheet" href="style.css" />
+		<script src="script.js" defer></script>
+	</head>
+	<body>
+		<!-- Навигация -->
+		<header class="navbar">
+			<div class="logo">Set Learn</div>
+			<nav class="nav-links">
+				<a href="/static/mainPage/">Главная</a>
+				<a href="/static/courses/">Курсы</a>
+				<a href="/static/questions/">Тесты</a>
+				<a href="/static/stepByStepAnimation/" class="active"
+					>Пошаговая анимация</a
+				>
+			</nav>
+			<div class="actions">
+				<!-- Тогглер темы -->
+				<button id="theme-toggle" aria-label="Переключить тему">
+					<img src="/static/img/dark-theme.png" alt="dark-theme-toggle" />
+				</button>
+				<!-- Иконка пользователя -->
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="userDefaultImg" />
+				</div>
+			</div>
+		</header>
+
+		<!-- Контент анимации -->
+		<main class="page-content">
+			<h1>Пошаговая анимация</h1>
+			<!-- Здесь разместите свой контейнер для анимации -->
+			<div id="animation-container">
+				<!-- Ваша интерактивная анимация -->
+			</div>
+		</main>
+	</body>
+</html>

@@ -1,0 +1,156 @@
+/* RESET & VARIABLES */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+html {
+	font-size: 16px;
+	scroll-behavior: smooth;
+}
+
+:root {
+	/* Светлая тема */
+	--bg: #f9fafb;
+	--text: #1f2937;
+	--card-bg: #ffffff;
+	--border: #e5e7eb;
+	--primary: #4f46e5;
+	--text-muted: #6b7280;
+
+	/* Отступы и радиус */
+	--sp-xs: 0.5rem;
+	--sp-sm: 1rem;
+	--sp-md: 1.5rem;
+	--radius: 0.5rem;
+	--trans: 0.3s ease;
+}
+:root[data-theme='dark'] {
+	/* Тёмная тема */
+	--bg: #1f2937;
+	--text: #f9fafb;
+	--card-bg: #2d3748;
+	--border: #4a5568;
+	--primary: #a78bfa;
+	--text-muted: #a0aec0;
+}
+
+body {
+	font-family: 'Inter', sans-serif;
+	line-height: 1.6;
+	background-color: var(--bg);
+	color: var(--text);
+	min-height: 100vh;
+	transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* NAVBAR */
+.navbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background-color: var(--card-bg);
+	padding: var(--sp-xs) var(--sp-md);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+	position: sticky;
+	top: 0;
+	z-index: 100;
+	transition: background-color 0.5s ease;
+}
+.logo {
+	font-size: 1.25rem;
+	font-weight: 700;
+	color: var(--primary);
+}
+.nav-links {
+	display: flex;
+	gap: var(--sp-md);
+}
+.nav-links a {
+	position: relative;
+	text-decoration: none;
+	color: var(--text-muted);
+	font-weight: 500;
+	transition: color var(--trans);
+}
+.nav-links a.active,
+.nav-links a:hover {
+	color: var(--primary);
+}
+.nav-links a.active::after,
+.nav-links a:hover::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	bottom: -2px;
+	width: 100%;
+	height: 2px;
+	background-color: var(--primary);
+}
+.actions {
+	display: flex;
+	align-items: center;
+}
+#theme-toggle {
+	background: none;
+	border: none;
+	font-size: 1.25rem;
+	cursor: pointer;
+	margin-right: var(--sp-sm);
+	transition: transform 0.2s;
+}
+#theme-toggle:hover {
+	transform: scale(1.1);
+}
+.user-icon img {
+	width: 2rem;
+	height: 2rem;
+	border-radius: 50%;
+	object-fit: cover;
+	cursor: pointer;
+	transition: transform var(--trans);
+}
+.user-icon img:hover {
+	transform: scale(1.1);
+}
+
+/* PAGE CONTENT */
+.page-content {
+	max-width: 800px;
+	margin: var(--sp-md) auto;
+	padding: 0 var(--sp-md);
+}
+.page-content h1 {
+	margin-bottom: var(--sp-md);
+	color: var(--primary);
+	transition: color 0.5s ease;
+}
+
+/* Анимация-контейнер */
+#animation-container {
+	background-color: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: var(--sp-md);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	transition: background-color 0.5s ease, border-color 0.5s ease;
+	/* Задайте нужные размеры для вашей анимации */
+	height: 400px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+	.navbar {
+		flex-direction: column;
+		gap: var(--sp-xs);
+	}
+	.nav-links {
+		flex-wrap: wrap;
+		justify-content: center;
+	}
+	#animation-container {
+		height: 300px;
+	}
+}

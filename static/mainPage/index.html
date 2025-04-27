@@ -1,0 +1,78 @@
+<!-- mainPage -->
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<!-- Указываем кодировку и адаптивность -->
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<!-- Заголовок страницы в браузере -->
+		<title>Главная — Set Learn</title>
+
+		<!-- 1. Сначала — инициализация темы -->
+		<script src="/static/js/theme-init.js"></script>
+
+		<!-- Подключаем стили -->
+		<link rel="stylesheet" href="style.css" />
+		<!-- Подключаем скрипт (defer — дождётся загрузки DOM) -->
+		<script src="script.js" defer></script>
+	</head>
+	<body>
+		<!-- Навигационная панель -->
+		<header class="navbar">
+			<!-- Логотип / название сайта -->
+			<div class="logo">Set Learn</div>
+			<!-- Ссылки меню -->
+			<nav class="nav-links">
+				<a href="/static/mainPage/" class="active">Главная</a>
+				<a href="/static/courses/">Курсы</a>
+				<a href="/static/questions/">Тесты</a>
+			</nav>
+			<!-- Блок с дополнительными действиями -->
+			<div class="actions">
+				<!-- Кнопка переключения темы -->
+				<button id="theme-toggle" aria-label="Переключить тему">
+					<img src="/static/img/dark-theme.png" alt="dark-theme-toggle" />
+				</button>
+				<!-- Иконка пользователя -->
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="userDefaultImg" />
+				</div>
+			</div>
+		</header>
+
+		<!-- Основной контент: сетка плиток -->
+		<main class="container">
+			<!-- Крупная плитка с анимацией -->
+			<div
+				class="tile big-tile"
+				onclick="navigate('/static/stepByStepAnimation/')"
+			>
+				<h2>Пошаговая анимация</h2>
+				<p>
+					Просмотр интерактивной демонстрации ассоциативного свойства множеств
+				</p>
+			</div>
+			<!-- Плитка с курсами -->
+			<div class="tile courses-tile" onclick="navigate('/static/courses/')">
+				<h2>Курсы</h2>
+				<p>Курсы по темам, которые вы проходите на данный момент</p>
+			</div>
+			<!-- Плитка с тестами -->
+			<div class="tile tests-tile" onclick="navigate('/static/questions/')">
+				<h2>Тесты</h2>
+				<p>Тесты, которые вам доступны на данный момент</p>
+			</div>
+			<!-- Плитка лидерборда -->
+			<div
+				class="tile leaderboard-tile"
+				onclick="navigate('/static/leaderboard/')"
+			>
+				<h2>Лидерборд</h2>
+			</div>
+			<!-- Плитка с теорией -->
+			<div class="tile theory-tile" onclick="navigate('/static/theory/')">
+				<h2>Теория</h2>
+			</div>
+		</main>
+	</body>
+</html>

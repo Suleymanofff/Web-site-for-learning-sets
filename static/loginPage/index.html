@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Регистрация/Вход — Set Learn</title>
+
+		<!-- 1. Сначала — инициализация темы -->
+		<script src="/static/js/theme-init.js"></script>
+
+		<!-- Стили и скрипт с поддержкой светлой/тёмной темы -->
+		<link rel="stylesheet" href="style.css" />
+		<!-- Font Awesome для иконок соцсетей -->
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+		/>
+		<script src="script.js" defer></script>
+	</head>
+	<body>
+		<header class="navbar">
+			<div class="logo">Set Learn</div>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему">
+					<img src="/static/img/dark-theme.png" alt="dark-theme-toggle" />
+				</button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<a href="#"><i class="fas fa-user"></i></a>
+				</div>
+			</div>
+		</header>
+
+		<div class="container" id="container">
+			<!-- Регистрация -->
+			<div class="form-container sign-up-container">
+				<form id="registerForm">
+					<h1>Создать аккаунт</h1>
+					<div class="social-container">
+						<a href="#" class="social"><i class="fab fa-facebook-f"></i></a>
+						<a href="#" class="social"><i class="fab fa-google-plus-g"></i></a>
+						<a href="#" class="social"><i class="fab fa-linkedin-in"></i></a>
+					</div>
+					<span>или используйте email для регистрации</span>
+					<input type="text" name="name" placeholder="Имя" required />
+					<input type="email" name="email" placeholder="Email" required />
+					<input
+						type="password"
+						name="password"
+						placeholder="Пароль"
+						required
+					/>
+					<button type="submit">Зарегистрироваться</button>
+				</form>
+			</div>
+
+			<!-- Вход -->
+			<div class="form-container sign-in-container">
+				<form id="loginForm">
+					<h1>Войти</h1>
+					<div class="social-container">
+						<a href="#" class="social"><i class="fab fa-facebook-f"></i></a>
+						<a href="#" class="social"><i class="fab fa-google-plus-g"></i></a>
+						<a href="#" class="social"><i class="fab fa-linkedin-in"></i></a>
+					</div>
+					<span>или используйте ваш аккаунт</span>
+					<input type="email" name="email" placeholder="Email" required />
+					<input
+						type="password"
+						name="password"
+						placeholder="Пароль"
+						required
+					/>
+					<a href="#" class="forgot-password">Забыли пароль?</a>
+					<button type="submit">Войти</button>
+				</form>
+			</div>
+
+			<!-- Оверлей для переключения -->
+			<div class="overlay-container">
+				<div class="overlay">
+					<div class="overlay-panel overlay-left">
+						<h1>С возвращением!</h1>
+						<p>Для входа используйте ваши данные</p>
+						<button class="ghost" id="signIn">Войти</button>
+					</div>
+					<div class="overlay-panel overlay-right">
+						<h1>Привет!</h1>
+						<p>Зарегистрируйтесь для начала работы</p>
+						<button class="ghost" id="signUp">Регистрация</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Мобильный переключатель -->
+			<div class="mobile-switcher">
+				<a href="#" id="mobileSwitchToSignIn">Уже есть аккаунт? Войти</a>
+				<a href="#" id="mobileSwitchToSignUp"
+					>Нет аккаунта? Зарегистрироваться</a
+				>
+			</div>
+		</div>
+	</body>
+</html>
