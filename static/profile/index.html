@@ -28,28 +28,40 @@
 			</div>
 		</header>
 
-		<div class="avatar-wrapper">
-			<img id="avatar" src="/static/uploads/default.png" alt="Avatar" />
-			<img
-				id="change-icon"
-				class="change-icon"
-				src="/static/img/change-icon-img.png"
-				alt="Change"
-			/>
-			<button
-				id="remove-avatar-btn"
-				class="remove-avatar-btn"
-				title="Удалить аватар"
-			>
-				✕
-			</button>
-			<input
-				id="avatar-input"
-				type="file"
-				accept="image/*"
-				style="display: none"
-			/>
+		<!-- Новый контейнер для аватарки + имени -->
+		<div class="avatar-profile">
+			<div class="avatar-wrapper">
+				<img id="avatar" src="/static/uploads/default.png" alt="Avatar" />
+				<img
+					id="change-icon"
+					class="change-icon"
+					src="/static/img/change-icon-img.png"
+					alt="Change"
+				/>
+				<button
+					id="remove-avatar-btn"
+					class="remove-avatar-btn"
+					title="Удалить аватар"
+				>
+					✕
+				</button>
+				<input
+					id="avatar-input"
+					type="file"
+					accept="image/*"
+					style="display: none"
+				/>
+			</div>
+			<!-- сюда JS будет записывать имя -->
+			<div class="avatar-info">
+				<span id="avatar-username" class="avatar-username"></span>
+				<!-- разделитель -->
+				<hr class="avatar-separator" />
+				<!-- блок для роли -->
+				<span id="avatar-role" class="avatar-role"></span>
+			</div>
 		</div>
+
 		<!-- Подтверждающий попап на удаление фотки профиля -->
 		<div id="confirm-modal" class="modal-overlay">
 			<div class="modal">
@@ -62,17 +74,27 @@
 		</div>
 
 		<main class="profile-container">
-			<h1>Личный кабинет</h1>
-			<div class="profile-card">
-				<p><strong>Имя:</strong> <span id="fullName"></span></p>
-				<p><strong>Email:</strong> <span id="email"></span></p>
-				<p><strong>Тема:</strong> <span id="theme"></span></p>
-				<p><strong>Активен:</strong> <span id="isActive"></span></p>
-				<p><strong>Создан:</strong> <span id="createdAt"></span></p>
-				<p><strong>Последний вход:</strong> <span id="lastLogin"></span></p>
-			</div>
-			<div class="profile-logout">
-				<button id="logout-btn" class="logout-btn">Выйти</button>
+			<div class="profile-section">
+				<!-- заголовок‑тогглер -->
+				<button id="profile-toggle" class="profile-toggle" type="button">
+					<span>Личные данные</span>
+					<span class="profile-toggle-icon">➕</span>
+				</button>
+
+				<!-- сам контент, по умолчанию скрыт -->
+				<div id="profile-details" class="profile-details">
+					<div class="profile-card">
+						<p><strong>Имя:</strong> <span id="fullName"></span></p>
+						<p><strong>Email:</strong> <span id="email"></span></p>
+						<p><strong>Роль:</strong> <span id="role"></span></p>
+						<p><strong>Активен:</strong> <span id="isActive"></span></p>
+						<p><strong>Создан:</strong> <span id="createdAt"></span></p>
+						<p><strong>Последний вход:</strong> <span id="lastLogin"></span></p>
+					</div>
+				</div>
+				<div class="profile-logout">
+					<button id="logout-btn" class="logout-btn">Выйти</button>
+				</div>
 			</div>
 		</main>
 	</body>

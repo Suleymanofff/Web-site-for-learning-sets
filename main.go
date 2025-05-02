@@ -38,7 +38,6 @@ type User struct {
 	PasswordHash string    `json:"-"`
 	Role         string    `json:"role"`
 	FullName     string    `json:"full_name"`
-	Theme        string    `json:"theme"`
 	IsActive     bool      `json:"is_active"`
 	CreatedAt    time.Time `json:"created_at"`
 	LastLogin    time.Time `json:"last_login"`
@@ -299,8 +298,8 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = db.Exec(
-		`INSERT INTO users(email, password_hash, role, full_name, theme, is_active, created_at)
-		 VALUES($1,$2,$3,$4,$5,$6,$7)`,
+		`INSERT INTO users(email, password_hash, role, full_name, is_active, created_at)
+		 VALUES($1,$2,$3,$4,$5,$6)`,
 		newUser.Email, string(hashedPass), "student", newUser.Name, "light", true, time.Now(),
 	)
 	if err != nil {
@@ -375,8 +374,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"role": user.Role})
 }
 
-// profileAPIHandler — возвращает JSON профиля, включая avatar_path
+// profileAPIHandler — возвращает JSON профиля, с вычислением is_active по last_login
 func profileAPIHandler(w http.ResponseWriter, r *http.Request) {
+	// Авторизация через JWT-куку
 	tokenCookie, err := r.Cookie("token")
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -390,21 +390,42 @@ func profileAPIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Читаем все поля, включая avatar_path
+	// Доставать поля, вычисляя is_active: true, если last_login < 5 минут назад
 	var u struct {
 		ID         int       `json:"id"`
 		Email      string    `json:"email"`
 		FullName   string    `json:"full_name"`
-		Theme      string    `json:"theme"`
 		IsActive   bool      `json:"is_active"`
 		CreatedAt  time.Time `json:"created_at"`
 		LastLogin  time.Time `json:"last_login"`
 		AvatarPath string    `json:"avatar_path"`
+		Role       string    `json:"role"`
 	}
 	err = db.QueryRow(`
-        SELECT id, email, full_name, theme, is_active, created_at, last_login, avatar_path
-        FROM users WHERE email = $1`, claims.Email,
-	).Scan(&u.ID, &u.Email, &u.FullName, &u.Theme, &u.IsActive, &u.CreatedAt, &u.LastLogin, &u.AvatarPath)
+		SELECT
+			id,
+			email,
+			full_name,
+			CASE
+				WHEN NOW() - last_login < INTERVAL '5 minutes' THEN TRUE
+				ELSE FALSE
+			END AS is_active,
+			created_at,
+			last_login,
+			avatar_path,
+			role
+		FROM users
+		WHERE email = $1
+	`, claims.Email).Scan(
+		&u.ID,
+		&u.Email,
+		&u.FullName,
+		&u.IsActive,
+		&u.CreatedAt,
+		&u.LastLogin,
+		&u.AvatarPath,
+		&u.Role,
+	)
 	if err != nil {
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
@@ -489,7 +510,6 @@ func createAdminUser() {
 		PasswordHash: string(hashed),
 		Role:         "admin",
 		FullName:     "Admin",
-		Theme:        "light",
 		IsActive:     true,
 		CreatedAt:    time.Now(),
 	}
@@ -501,10 +521,9 @@ func createAdminUser() {
 	}
 	if !exists {
 		_, err = db.Exec(`
-			INSERT INTO users(email,password_hash,role,full_name,theme,is_active,created_at)
+			INSERT INTO users(email,password_hash,role,full_name,is_active,created_at)
 			VALUES($1,$2,$3,$4,$5,$6,$7)`,
-			admin.Email, admin.PasswordHash, admin.Role, admin.FullName,
-			admin.Theme, admin.IsActive, admin.CreatedAt,
+			admin.Email, admin.PasswordHash, admin.Role, admin.FullName, admin.IsActive, admin.CreatedAt,
 		)
 		if err != nil {
 			log.Fatal(err)

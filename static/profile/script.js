@@ -60,13 +60,70 @@ async function loadProfile() {
 			if (el) el.textContent = text
 		}
 
+		// Имя и роль в блоке аватарки
+		const avatarNameEl = document.getElementById('avatar-username')
+		if (avatarNameEl) avatarNameEl.textContent = user.full_name
+
+		const avatarRoleEl = document.getElementById('avatar-role')
+		if (avatarRoleEl) {
+			avatarRoleEl.textContent = user.role || ''
+			avatarRoleEl.classList.remove('student', 'teacher', 'admin')
+			avatarRoleEl.classList.add(user.role.toLowerCase())
+		}
+
+		// Остальные базовые поля
 		setText('fullName', user.full_name)
 		setText('email', user.email)
-		setText('theme', user.theme)
-		setText('isActive', user.is_active ? 'Да' : 'Нет')
+		setText('role', user.role)
+
+		// Новый блок: отображаем онлайн/последний визит
+		const isActiveEl = document.getElementById('isActive')
+		if (isActiveEl) {
+			if (user.is_active) {
+				isActiveEl.textContent = 'в сети'
+			} else {
+				const dt = new Date(user.last_login)
+				const now = new Date()
+				const two = n => String(n).padStart(2, '0')
+				const hhmm = `${two(dt.getHours())}:${two(dt.getMinutes())}`
+
+				// проверяем сегодня/вчера
+				const isToday = dt.toDateString() === now.toDateString()
+				const yesterday = new Date(now)
+				yesterday.setDate(now.getDate() - 1)
+				const isYesterday = dt.toDateString() === yesterday.toDateString()
+
+				let text
+				if (isToday) {
+					text = `был(а) сегодня в ${hhmm}`
+				} else if (isYesterday) {
+					text = `был(а) вчера в ${hhmm}`
+				} else {
+					const monthNames = [
+						'янв.',
+						'фев.',
+						'мар.',
+						'апр.',
+						'май',
+						'июн.',
+						'июл.',
+						'авг.',
+						'сен.',
+						'окт.',
+						'ноя.',
+						'дек.',
+					]
+					text = `был(а) ${dt.getDate()} ${monthNames[dt.getMonth()]} в ${hhmm}`
+				}
+				isActiveEl.textContent = text
+			}
+		}
+
+		// Устанавливаем дату создания и последний вход
 		setText('createdAt', new Date(user.created_at).toLocaleString())
 		setText('lastLogin', new Date(user.last_login).toLocaleString())
 
+		// Аватар из API
 		const avatarEl = document.getElementById('avatar')
 		if (avatarEl && user.avatar_path) {
 			avatarEl.src = user.avatar_path
@@ -114,6 +171,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	// D) Загрузка профиля
 	loadProfile()
+
+	// accordion для личных данных
+	const toggleBtn = document.getElementById('profile-toggle')
+	const details = document.getElementById('profile-details')
+	const icon = toggleBtn.querySelector('.profile-toggle-icon')
+
+	toggleBtn.addEventListener('click', () => {
+		const isOpen = toggleBtn.classList.contains('open')
+
+		if (isOpen) {
+			// сворачиваем
+			details.style.height = details.scrollHeight + 'px' // текущая высота
+			requestAnimationFrame(() => {
+				details.style.height = '0'
+			})
+			toggleBtn.classList.remove('open')
+			icon.textContent = '➕'
+		} else {
+			// разворачиваем
+			toggleBtn.classList.add('open')
+			// сначала даём деталям максимально возможную высоту
+			details.style.height = details.scrollHeight + 'px'
+			icon.textContent = '➖'
+			// после окончания анимации — убираем жёсткую высоту, чтобы контент мог расти
+			details.addEventListener('transitionend', function handler() {
+				details.style.height = 'auto'
+				details.removeEventListener('transitionend', handler)
+			})
+		}
+	})
 
 	// E) Смена аватара
 	const changeIcon = document.getElementById('change-icon')
