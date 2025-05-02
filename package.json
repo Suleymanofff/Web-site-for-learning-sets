@@ -1,0 +1,14 @@
+{
+	"scripts": {
+		"start:front": "node server.js",
+		"start:api": "go run main.go",
+		"start": "concurrently \"npm run start:front\" \"npm run start:api\""
+	},
+	"devDependencies": {
+		"concurrently": "^7.6.0",
+		"http-proxy-middleware": "^2.0.9"
+	},
+	"dependencies": {
+		"express": "^5.1.0"
+	}
+}
