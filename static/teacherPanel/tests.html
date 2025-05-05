@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Тесты — Панель учителя</title>
+
+		<!-- 1. Сначала — инициализация темы -->
+		<script src="/static/js/theme-init.js"></script>
+
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	<body>
+		<header class="navbar">
+			<div class="logo">Set Learn</div>
+			<nav class="nav-links">
+				<a href="index.html">Панель</a>
+				<a href="courses.html">Курсы</a>
+				<a href="tests.html" class="active">Тесты</a>
+				<a href="questions.html">Вопросы</a>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="User" />
+				</div>
+			</div>
+		</header>
+
+		<main class="page-content">
+			<h1>Управление тестами</h1>
+			<form id="newTestForm" class="course-form">
+				<input name="title" placeholder="Название теста" required />
+				<input name="description" placeholder="Описание теста" required />
+				<select name="course_id" required>
+					<option value="">Выберите курс</option>
+				</select>
+				<button type="submit"><i class="fas fa-plus"></i> Добавить</button>
+			</form>
+			<div class="table-wrapper">
+				<table id="testsTable">
+					<thead>
+						<tr>
+							<th>Название</th>
+							<th>Описание</th>
+							<th>Курс ID</th>
+							<th>Дата создания</th>
+							<th>Действия</th>
+						</tr>
+					</thead>
+					<tbody id="testsBody"></tbody>
+				</table>
+			</div>
+		</main>
+
+		<script src="script.js"></script>
+	</body>
+</html>

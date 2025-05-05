@@ -76,29 +76,68 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Создаём начального администратора, если нет
 	createAdminUser()
 
 	// MIME-типы для статики
 	mime.AddExtensionType(".css", "text/css")
 	mime.AddExtensionType(".js", "application/javascript")
-	mime.AddExtensionType(".svg", "image/svg+xml") // на случай если буду использовать svg типы картинок
+	mime.AddExtensionType(".svg", "image/svg+xml")
 
-	// Отдача статики
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	// Основной мультиплексор
+	mux := http.NewServeMux()
 
-	// Маршруты
-	http.HandleFunc("/", rootHandler)
-	http.HandleFunc("/register", registerHandler)
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/api/profile", profileAPIHandler)
-	http.HandleFunc("/profile", profilePageHandler)
-	http.HandleFunc("/logout", logoutHandler)
-	// Роут для загрузки аватарки
-	http.HandleFunc("/api/upload-avatar", uploadAvatarHandler)
-	http.HandleFunc("/api/remove-avatar", removeAvatarHandler)
+	// Статические файлы
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
+	// Публичные маршруты
+	mux.HandleFunc("/", rootHandler)
+	mux.HandleFunc("/register", registerHandler)
+	mux.HandleFunc("/login", loginHandler)
+	mux.HandleFunc("/profile", profilePageHandler)
+	mux.HandleFunc("/logout", logoutHandler)
+
+	// API‑mux (только для аутентифицированных)
+	apiMux := http.NewServeMux()
+	// Доступно всем ролям
+	apiMux.HandleFunc("/api/profile", profileAPIHandler)
+	apiMux.HandleFunc("/api/upload-avatar", uploadAvatarHandler)
+	apiMux.HandleFunc("/api/remove-avatar", removeAvatarHandler)
+	// Только для admin
+	apiMux.Handle(
+		"/api/admin/users",
+		RequireRole("admin", http.HandlerFunc(adminUsersHandler)),
+	)
+	apiMux.Handle(
+		"/api/admin/courses",
+		RequireRole("admin", http.HandlerFunc(adminCoursesHandler)),
+	)
+	// Для teacher и admin
+	apiMux.Handle(
+		"/api/teacher/courses",
+		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherCoursesHandler)),
+	)
+	apiMux.Handle(
+		"/api/teacher/tests",
+		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherTestsHandler)),
+	)
+
+	apiMux.Handle(
+		"/api/teacher/questions",
+		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherQuestionsHandler)),
+	)
+
+	apiMux.Handle(
+		"/api/teacher/options",
+		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherOptionsHandler)),
+	)
+
+	// Оборачиваем API в JWT‑middleware
+	mux.Handle("/api/", JWTAuthMiddleware(apiMux))
+
+	// Старт сервера
 	fmt.Println("Server started on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
 
 // uploadAvatarHandler — принимает multipart/form-data с полем "avatar"

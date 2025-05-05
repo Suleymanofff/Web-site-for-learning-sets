@@ -1,0 +1,426 @@
+/* === RESET & VARIABLES === */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+html {
+	font-size: 16px;
+	scroll-behavior: smooth;
+}
+:root {
+	--bg: #f9fafb;
+	--text: #1f2937;
+	--card-bg: #ffffff;
+	--border: #e5e7eb;
+	--primary: #4f46e5;
+	--text-muted: #6b7280;
+	--sp-xs: 0.5rem;
+	--sp-sm: 1rem;
+	--sp-md: 1.5rem;
+	--sp-lg: 2rem;
+	--radius: 0.5rem;
+	--trans: 0.3s ease;
+}
+:root[data-theme='dark'] {
+	--bg: #1f2937;
+	--text: #f9fafb;
+	--card-bg: #2d3748;
+	--border: #4a5568;
+	--primary: #a78bfa;
+	--text-muted: #a0aec0;
+}
+body {
+	font-family: 'Inter', sans-serif;
+	background: var(--bg);
+	color: var(--text);
+	min-height: 100vh;
+	transition: background 0.5s, color 0.5s;
+}
+
+/* NAVBAR */
+.navbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background: var(--card-bg);
+	padding: var(--sp-xs) var(--sp-md);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+	position: sticky;
+	top: 0;
+	z-index: 100;
+}
+.logo {
+	font-size: 1.25rem;
+	color: var(--primary);
+	font-weight: 700;
+}
+.nav-links {
+	display: flex;
+	gap: var(--sp-md);
+}
+.nav-links a {
+	text-decoration: none;
+	color: var(--text-muted);
+	font-weight: 500;
+	position: relative;
+	padding: var(--sp-xs) 0;
+}
+.nav-links a.active,
+.nav-links a:hover {
+	color: var(--primary);
+}
+.nav-links a.active::after,
+.nav-links a:hover::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	bottom: -2px;
+	width: 100%;
+	height: 2px;
+	background: var(--primary);
+}
+.actions {
+	display: flex;
+	align-items: center;
+}
+#theme-toggle {
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 1.25rem;
+	margin-right: var(--sp-sm);
+}
+.user-icon img {
+	width: 2rem;
+	height: 2rem;
+	border-radius: 50%;
+	object-fit: cover;
+	cursor: pointer;
+	transition: transform var(--trans);
+}
+.user-icon img:hover {
+	transform: scale(1.1);
+}
+
+/* PAGE CONTENT */
+.page-content {
+	max-width: 1200px;
+	margin: var(--sp-lg) auto;
+	padding: 0 var(--sp-md);
+}
+.page-content h1 {
+	margin-bottom: var(--sp-md);
+	color: var(--primary);
+	transition: color var(--trans);
+}
+
+/* TILES (index) */
+.tiles {
+	display: flex;
+	gap: var(--sp-md);
+	flex-wrap: wrap;
+	margin-top: var(--sp-lg);
+}
+.card {
+	flex: 1 1 30%;
+	background: var(--primary);
+	color: var(--bg);
+	text-align: center;
+	padding: var(--sp-lg) var(--sp-md);
+	border-radius: var(--radius);
+	text-decoration: none;
+	font-size: 1.2rem;
+	transition: background var(--trans);
+}
+.card:hover {
+	background: #3c3bd1;
+}
+
+/* FORM GRID */
+.course-form {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) auto;
+	gap: var(--sp-sm);
+	margin-top: var(--sp-md);
+	align-items: end;
+}
+.course-form input,
+.course-form select {
+	padding: var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--card-bg);
+	transition: border-color var(--trans);
+}
+.course-form input:focus,
+.course-form select:focus {
+	outline: none;
+	border-color: var(--primary);
+}
+.course-form button {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-xs);
+	padding: var(--sp-sm) var(--sp-md);
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+}
+.course-form button:hover {
+	opacity: 0.9;
+}
+
+/* COMMON TABLE STYLES */
+.table-wrapper {
+	margin-top: var(--sp-md);
+	overflow-x: auto;
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+.table-wrapper table {
+	width: 100%;
+	min-width: 700px;
+	border-collapse: collapse;
+	table-layout: auto;
+}
+.table-wrapper th,
+.table-wrapper td {
+	padding: var(--sp-sm) var(--sp-md);
+	text-align: left;
+	white-space: nowrap;
+}
+.table-wrapper thead {
+	background: var(--primary);
+}
+.table-wrapper thead th {
+	color: var(--bg);
+	font-weight: 600;
+}
+.table-wrapper thead th:first-child {
+	border-top-left-radius: var(--radius);
+}
+.table-wrapper thead th:last-child {
+	border-top-right-radius: var(--radius);
+}
+.table-wrapper tbody tr:nth-child(odd) {
+	background: var(--bg);
+}
+.table-wrapper tbody tr:nth-child(even) {
+	background: var(--border);
+}
+.table-wrapper tbody tr:hover {
+	background: rgba(79, 70, 229, 0.1);
+}
+.table-wrapper tbody tr:last-child td:first-child {
+	border-bottom-left-radius: var(--radius);
+}
+.table-wrapper tbody tr:last-child td:last-child {
+	border-bottom-right-radius: var(--radius);
+}
+
+/* EDITABLE FIELDS */
+/* Изменили background на var(--bg) и задали цвет var(--text) */
+input.edit-title,
+input.edit-desc,
+input.edit-text {
+	width: 100%;
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--bg);
+	color: var(--text);
+	transition: border-color var(--trans), background var(--trans),
+		color var(--trans);
+}
+input.edit-title:focus,
+input.edit-desc:focus,
+input.edit-text:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+/* CRUD BUTTONS */
+button.save-course,
+button.save-test,
+button.save-question,
+button.save-option,
+button.save-new-option,
+button.manage-options {
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+	margin-right: var(--sp-xs);
+}
+button.save-course:hover,
+button.save-test:hover,
+button.save-question:hover,
+button.save-option:hover,
+button.save-new-option:hover,
+button.manage-options:hover {
+	opacity: 0.8;
+}
+button.del-course,
+button.del-test,
+button.del-question,
+button.del-option {
+	background: transparent;
+	border: 1px solid var(--text-muted);
+	color: var(--text-muted);
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: background var(--trans), color var(--trans), opacity var(--trans);
+}
+button.del-course:hover,
+button.del-test:hover,
+button.del-question:hover,
+button.del-option:hover {
+	background: var(--text-muted);
+	color: var(--bg);
+	opacity: 0.8;
+}
+
+/* SELECT & CHECKBOX */
+select.edit-type {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--card-bg)
+		url("data:image/svg+xml;charset=UTF-8,%3Csvg width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6l5-6'%3E%3C/path%3E%3C/svg%3E")
+		no-repeat right var(--sp-sm) center / 0.6em;
+	cursor: pointer;
+	transition: border-color var(--trans);
+}
+select.edit-type:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+input.edit-multi[type='checkbox'],
+.new-opt-correct[type='checkbox'] {
+	transform: scale(1.2);
+	cursor: pointer;
+}
+
+/* === OPTIONS WRAPPER & TABLE === */
+.options-row {
+	background: var(--bg) !important;
+}
+.options-row .options-wrapper {
+	padding: var(--sp-sm);
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: inset 0 0 0 1px var(--border);
+}
+.options-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-bottom: var(--sp-sm);
+}
+.options-table th,
+.options-table td {
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	text-align: left;
+	white-space: nowrap;
+}
+
+/* НЕСКЛАДИВАЕМАЯ И ВСЕГДА ВИДИМАЯ ШАПКА ВАРИАНТОВ */
+.options-row .options-wrapper .options-table thead {
+	display: table-header-group;
+	background: var(--primary);
+}
+.options-row .options-wrapper .options-table thead th {
+	color: var(--bg);
+	font-weight: 600;
+	padding: var(--sp-sm) var(--sp-md);
+}
+
+/* NEW OPTION ROW */
+/* Изменили background на var(--bg) и цвет var(--text) */
+.new-option-row input.new-opt-text {
+	width: 100%;
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--bg);
+	color: var(--text);
+	transition: border-color var(--trans), background var(--trans),
+		color var(--trans);
+}
+.new-option-row input.new-opt-correct {
+	transform: scale(1.2);
+	cursor: pointer;
+}
+.new-option-row button.save-new-option {
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+}
+.new-option-row button.save-new-option:hover {
+	opacity: 0.8;
+}
+
+/* === Стили для <select> на страницах Тестов и Вопросов === */
+#newTestForm select,
+#newQuestionForm select {
+	/* фон того же цвета, что и обычный фон страницы */
+	background: var(--bg);
+	/* цвет текста того же, что в теле */
+	color: var(--text);
+	/* убираем старый фон иконки, если он есть */
+	background-image: none;
+}
+
+#newTestForm select:focus,
+#newQuestionForm select:focus {
+	/* при фокусе оставляем такой же фон/цвет */
+	background: var(--bg);
+	color: var(--text);
+	/* подчёркиваем рамку */
+	border-color: var(--primary);
+	box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+/* Убедимся, что сами <option> тоже читаемы */
+#newTestForm select option,
+#newQuestionForm select option {
+	background: var(--bg);
+	color: var(--text);
+}
+
+/* MOBILE */
+@media (max-width: 600px) {
+	.tiles {
+		flex-direction: column;
+	}
+	.table-wrapper,
+	.course-form {
+		overflow-x: auto;
+	}
+	.nav-links {
+		flex-direction: column;
+		gap: var(--sp-xs);
+	}
+}

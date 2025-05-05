@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	})
 	updateMobileSwitcher()
 
-	// Формы регистрации/входа
+	// Формы регистрации
 	document
 		.getElementById('registerForm')
 		.addEventListener('submit', async e => {
@@ -113,22 +113,131 @@ document.addEventListener('DOMContentLoaded', () => {
 				alert('Ошибка подключения')
 			}
 		})
+
+	// Форма входа: отправка с credentials и редирект по роли
 	document.getElementById('loginForm').addEventListener('submit', async e => {
 		e.preventDefault()
 		const fd = new FormData(e.target)
-		const data = { email: fd.get('email'), password: fd.get('password') }
+		const data = {
+			email: fd.get('email'),
+			password: fd.get('password'),
+		}
 		try {
 			const res = await fetch('/login', {
 				method: 'POST',
+				credentials: 'include', // важно: передать и получить JWT-куку
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(data),
 			})
-			if (res.ok) window.location.href = '/static/mainPage/'
-			else alert('Ошибка: ' + (await res.text()))
-		} catch {
-			alert('Ошибка подключения')
+			if (!res.ok) {
+				const text = await res.text()
+				throw new Error(text || res.statusText)
+			}
+			const { role } = await res.json()
+			// Редирект в зависимости от роли
+			if (role === 'admin') {
+				window.location.href = '/static/adminPanel/'
+			} else if (role === 'teacher') {
+				window.location.href = '/static/teacherPanel/'
+			} else {
+				window.location.href = '/static/mainPage/'
+			}
+		} catch (err) {
+			alert('Ошибка входа: ' + err.message)
 		}
 	})
 
 	loadUserIcon()
 })
+
+// document.addEventListener('DOMContentLoaded', () => {
+// 	// Инициализация темы
+// 	const stored = localStorage.getItem('theme')
+// 	const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+// 	const theme = stored || (prefersDark ? 'dark' : 'light')
+// 	document.documentElement.setAttribute('data-theme', theme)
+// 	updateToggleIcon(theme)
+// 	document.getElementById('theme-toggle').addEventListener('click', () => {
+// 		const next =
+// 			document.documentElement.getAttribute('data-theme') === 'dark'
+// 				? 'light'
+// 				: 'dark'
+// 		document.documentElement.setAttribute('data-theme', next)
+// 		localStorage.setItem('theme', next)
+// 		updateToggleIcon(next)
+// 	})
+
+// 	// Переключение панелей
+// 	const container = document.getElementById('container')
+// 	const signUpBtn = document.getElementById('signUp')
+// 	const signInBtn = document.getElementById('signIn')
+// 	const mobileIn = document.getElementById('mobileSwitchToSignIn')
+// 	const mobileUp = document.getElementById('mobileSwitchToSignUp')
+
+// 	function togglePanel(isSignUp) {
+// 		container.classList.toggle('right-panel-active', isSignUp)
+// 		updateMobileSwitcher()
+// 	}
+// 	function updateMobileSwitcher() {
+// 		const active = container.classList.contains('right-panel-active')
+// 		mobileIn.style.display = active ? 'inline-block' : 'none'
+// 		mobileUp.style.display = active ? 'none' : 'inline-block'
+// 	}
+// 	signUpBtn.addEventListener('click', () => togglePanel(true))
+// 	signInBtn.addEventListener('click', () => togglePanel(false))
+// 	mobileIn.addEventListener('click', e => {
+// 		e.preventDefault()
+// 		togglePanel(false)
+// 	})
+// 	mobileUp.addEventListener('click', e => {
+// 		e.preventDefault()
+// 		togglePanel(true)
+// 	})
+// 	updateMobileSwitcher()
+
+// 	// Формы регистрации/входа
+// 	document
+// 		.getElementById('registerForm')
+// 		.addEventListener('submit', async e => {
+// 			e.preventDefault()
+// 			const fd = new FormData(e.target)
+// 			const data = {
+// 				name: fd.get('name'),
+// 				email: fd.get('email'),
+// 				password: fd.get('password'),
+// 			}
+// 			try {
+// 				const res = await fetch('/register', {
+// 					method: 'POST',
+// 					headers: { 'Content-Type': 'application/json' },
+// 					body: JSON.stringify(data),
+// 				})
+// 				if (res.ok) {
+// 					alert('Успешно зарегистрированы')
+// 					togglePanel(false)
+// 				} else {
+// 					alert('Ошибка: ' + (await res.text()))
+// 				}
+// 			} catch {
+// 				alert('Ошибка подключения')
+// 			}
+// 		})
+// 	document.getElementById('loginForm').addEventListener('submit', async e => {
+// 		e.preventDefault()
+// 		const fd = new FormData(e.target)
+// 		const data = { email: fd.get('email'), password: fd.get('password') }
+// 		try {
+// 			const res = await fetch('/login', {
+// 				method: 'POST',
+// 				headers: { 'Content-Type': 'application/json' },
+// 				body: JSON.stringify(data),
+// 			})
+// 			if (res.ok) window.location.href = '/static/mainPage/'
+// 			else alert('Ошибка: ' + (await res.text()))
+// 		} catch {
+// 			alert('Ошибка подключения')
+// 		}
+// 	})
+
+// 	loadUserIcon()
+// })

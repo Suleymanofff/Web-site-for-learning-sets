@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Вопросы — Панель учителя</title>
+
+		<!-- 1. Сначала — инициализация темы -->
+		<script src="/static/js/theme-init.js"></script>
+
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	<body>
+		<header class="navbar">
+			<div class="logo">Set Learn</div>
+			<nav class="nav-links">
+				<a href="index.html">Панель</a>
+				<a href="courses.html">Курсы</a>
+				<a href="tests.html">Тесты</a>
+				<a href="questions.html" class="active">Вопросы</a>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="User" />
+				</div>
+			</div>
+		</header>
+
+		<main class="page-content">
+			<h1>Управление вопросами</h1>
+			<form id="newQuestionForm" class="course-form">
+				<select name="test_id" required>
+					<option value="">Выберите тест</option>
+				</select>
+				<input
+					type="text"
+					name="question_text"
+					placeholder="Текст вопроса"
+					required
+				/>
+				<select name="question_type" required>
+					<option value="open">Открытый</option>
+					<option value="closed">Закрытый</option>
+				</select>
+				<label>
+					<input type="checkbox" name="multiple_choice" />
+					Несколько ответов
+				</label>
+				<button type="submit"><i class="fas fa-plus"></i> Добавить</button>
+			</form>
+
+			<div class="table-wrapper">
+				<table id="questionsTable">
+					<thead>
+						<tr>
+							<th>Вопрос</th>
+							<th>Тип</th>
+							<th>Несколько</th>
+							<th>Тест ID</th>
+							<th>Дата создания</th>
+							<th>Варианты</th>
+							<th>Действия</th>
+						</tr>
+					</thead>
+					<tbody id="questionsBody"></tbody>
+				</table>
+			</div>
+		</main>
+
+		<script src="script.js"></script>
+	</body>
+</html>

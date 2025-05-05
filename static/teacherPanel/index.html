@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Панель учителя — Set Learn</title>
+
+		<!-- 1. Сначала — инициализация темы -->
+		<script src="/static/js/theme-init.js"></script>
+
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	<body>
+		<header class="navbar">
+			<div class="logo">Set Learn</div>
+			<nav class="nav-links">
+				<a href="index.html" class="active">Панель</a>
+				<a href="courses.html">Курсы</a>
+				<a href="tests.html">Тесты</a>
+				<a href="questions.html">Вопросы</a>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="User" />
+				</div>
+			</div>
+		</header>
+
+		<main class="page-content">
+			<h1>Панель учителя</h1>
+			<section class="tiles">
+				<a href="courses.html" class="card">Управление курсами</a>
+				<a href="tests.html" class="card">Управление тестами</a>
+				<a href="questions.html" class="card">Управление вопросами</a>
+			</section>
+		</main>
+
+		<script src="script.js"></script>
+	</body>
+</html>
