@@ -8,19 +8,23 @@ function navigate(url) {
 
 /* -----------------------
    2. Подгрузка аватарки в навбар
+   (возвращаем объект user!)  ←!
 ------------------------ */
 async function loadUserIcon() {
 	try {
 		const res = await fetch('/api/profile', { credentials: 'same-origin' })
-		if (!res.ok) return // не залогинен или другая ошибка
+		if (!res.ok) return null // не залогинен или другая ошибка
 		const user = await res.json()
 
 		if (user.avatar_path) {
 			const navImg = document.querySelector('.user-icon img')
 			if (navImg) navImg.src = user.avatar_path
 		}
+
+		return user // ←! возвращаем для проверки роли
 	} catch (err) {
 		console.error('Error loading user icon:', err)
+		return null // ←! на ошибке тоже возвращаем null
 	}
 }
 
@@ -32,7 +36,7 @@ function updateToggleIcon(theme) {
 
 	// Создаём элемент изображения
 	const icon = document.createElement('img')
-	icon.alt = 'Toggle theme' // Альтернативный текст для доступности
+	icon.alt = 'Toggle theme'
 
 	// Устанавливаем путь к изображению в зависимости от темы
 	icon.src =
@@ -69,7 +73,22 @@ document.addEventListener('DOMContentLoaded', () => {
 		updateToggleIcon(next)
 	})
 
-	loadUserIcon()
+	// --- показываем аватар и одновременно проверяем роль ---
+	loadUserIcon().then(user => {
+		if (!user) return
+		if (user.role === 'admin') {
+			const adminTile = document.getElementById('go-to-admin')
+			if (adminTile) adminTile.style.display = 'flex'
+		}
+		if (user.role === 'teacher') {
+			// 1) в навигации
+			const navTeacher = document.getElementById('nav-teacher')
+			if (navTeacher) navTeacher.style.display = 'inline-block'
+			// 2) на главной странице-плитках
+			const teacherTile = document.getElementById('go-to-teacher')
+			if (teacherTile) teacherTile.style.display = 'flex'
+		}
+	})
 
 	// TODO: инициализация и запуск анимации в #animation-container
 })

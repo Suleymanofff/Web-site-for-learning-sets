@@ -23,24 +23,27 @@ function updateToggleIcon(theme) {
 
 /* -----------------------
    2. Подгрузка аватарки в навбар
+   (возвращает объект user)
 ------------------------ */
 async function loadUserIcon() {
 	try {
 		const res = await fetch('/api/profile', { credentials: 'same-origin' })
-		if (!res.ok) return // не залогинен или другая ошибка
+		if (!res.ok) return null // не залогинен или другая ошибка
 		const user = await res.json()
-
 		if (user.avatar_path) {
 			const navImg = document.querySelector('.user-icon img')
 			if (navImg) navImg.src = user.avatar_path
 		}
+		return user
 	} catch (err) {
 		console.error('Error loading user icon:', err)
+		return null
 	}
 }
 
 /* -----------------------
    3. Загрузка данных профиля
+   + показ ссылки "Панель админа"
 ------------------------ */
 async function loadProfile() {
 	try {
@@ -76,7 +79,7 @@ async function loadProfile() {
 		setText('email', user.email)
 		setText('role', user.role)
 
-		// Новый блок: отображаем онлайн/последний визит
+		// Онлайн / последний визит
 		const isActiveEl = document.getElementById('isActive')
 		if (isActiveEl) {
 			if (user.is_active) {
@@ -87,7 +90,6 @@ async function loadProfile() {
 				const two = n => String(n).padStart(2, '0')
 				const hhmm = `${two(dt.getHours())}:${two(dt.getMinutes())}`
 
-				// проверяем сегодня/вчера
 				const isToday = dt.toDateString() === now.toDateString()
 				const yesterday = new Date(now)
 				yesterday.setDate(now.getDate() - 1)
@@ -119,14 +121,24 @@ async function loadProfile() {
 			}
 		}
 
-		// Устанавливаем дату создания и последний вход
+		// Даты создания и последнего входа
 		setText('createdAt', new Date(user.created_at).toLocaleString())
 		setText('lastLogin', new Date(user.last_login).toLocaleString())
 
-		// Аватар из API
+		// Локальный превью аватара, если есть
 		const avatarEl = document.getElementById('avatar')
 		if (avatarEl && user.avatar_path) {
 			avatarEl.src = user.avatar_path
+		}
+
+		// Показ ссылки "Панель админа" для админа
+		if (user.role === 'admin') {
+			const adminLink = document.getElementById('nav-admin')
+			if (adminLink) adminLink.style.display = 'inline-block'
+		}
+		if (user.role === 'teacher') {
+			const teacherLink = document.getElementById('nav-teacher')
+			if (teacherLink) teacherLink.style.display = 'inline-block'
 		}
 	} catch (err) {
 		console.error('Error loading profile:', err)

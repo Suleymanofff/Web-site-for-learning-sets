@@ -6,24 +6,24 @@ function navigate(url) {
 }
 
 // -----------------------
-// 2. Загрузка аватарки в навбар
+// 2. Загрузка аватарки
 // -----------------------
 async function loadUserIcon() {
 	try {
 		const res = await fetch('/api/profile', { credentials: 'include' })
 		if (!res.ok) return
-		const user = await res.json()
-		if (user.avatar_path) {
+		const u = await res.json()
+		if (u.avatar_path) {
 			const img = document.querySelector('.user-icon img')
-			if (img) img.src = user.avatar_path
+			if (img) img.src = u.avatar_path
 		}
 	} catch (err) {
-		console.error('Error loading user icon:', err)
+		console.error(err)
 	}
 }
 
 // -----------------------
-// 3. Обновление иконки темы
+// 3. Тема
 // -----------------------
 function updateToggleIcon(theme) {
 	const btn = document.getElementById('theme-toggle')
@@ -38,22 +38,22 @@ function updateToggleIcon(theme) {
 }
 
 // -----------------------
-// 4. Основная инициализация
+// 4. Инициализация
 // -----------------------
 document.addEventListener('DOMContentLoaded', () => {
-	// 4.1. Активная ссылка меню
-	const path = window.location.pathname
+	// 4.1. Активная ссылка
+	const path = window.location.pathname.split('/').pop()
 	document.querySelectorAll('.nav-links a').forEach(link => {
-		link.classList.toggle('active', path.startsWith(link.getAttribute('href')))
+		link.classList.toggle('active', link.getAttribute('href') === path)
 	})
 
 	// 4.2. Тема
 	const stored = localStorage.getItem('theme')
-	const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-	const theme = stored || (prefersDark ? 'dark' : 'light')
+	const dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+	const theme = stored || (dark ? 'dark' : 'light')
 	document.documentElement.setAttribute('data-theme', theme)
 	updateToggleIcon(theme)
-	document.getElementById('theme-toggle').addEventListener('click', () => {
+	document.getElementById('theme-toggle').onclick = () => {
 		const next =
 			document.documentElement.getAttribute('data-theme') === 'dark'
 				? 'light'
@@ -61,60 +61,57 @@ document.addEventListener('DOMContentLoaded', () => {
 		document.documentElement.setAttribute('data-theme', next)
 		localStorage.setItem('theme', next)
 		updateToggleIcon(next)
-	})
+	}
 
-	// 4.3. Подгрузить аватар
 	loadUserIcon()
 
-	// 4.4. Загрузка списка пользователей
+	// 4.3. Определяем текущую страницу и запускаем нужный модуль
+	if (document.getElementById('usersBody')) initUsers()
+	if (document.getElementById('coursesBody')) initCourses()
+})
+
+// -----------------------
+// Управление пользователями
+// -----------------------
+function initUsers() {
 	const tbody = document.getElementById('usersBody')
-	fetch('/api/admin/users', {
-		method: 'GET',
-		credentials: 'include',
-	})
-		.then(res => {
-			if (!res.ok) throw new Error(`Ошибка ${res.status}`)
-			return res.json()
-		})
-		.then(users => {
-			users.forEach(user => {
+	fetch('/api/admin/users', { credentials: 'include' })
+		.then(r => (r.ok ? r.json() : Promise.reject(r.statusText)))
+		.then(arr => {
+			arr.forEach(u => {
 				const tr = document.createElement('tr')
 				tr.innerHTML = `
-          <td>${user.email}</td>
-          <td>${user.full_name}</td>
+          <td>${u.email}</td>
+          <td>${u.full_name}</td>
           <td>
-            <select data-id="${user.id}">
+            <select data-id="${u.id}">
               <option value="student"${
-								user.role === 'student' ? ' selected' : ''
+								u.role === 'student' ? ' selected' : ''
 							}>student</option>
               <option value="teacher"${
-								user.role === 'teacher' ? ' selected' : ''
+								u.role === 'teacher' ? ' selected' : ''
 							}>teacher</option>
               <option value="admin"${
-								user.role === 'admin' ? ' selected' : ''
+								u.role === 'admin' ? ' selected' : ''
 							}>admin</option>
             </select>
           </td>
-          <td>${user.is_active ? 'Да' : 'Нет'}</td>
-          <td>${new Date(user.last_login).toLocaleString()}</td>
+          <td>${u.is_active ? 'Да' : 'Нет'}</td>
+          <td>${new Date(u.last_login).toLocaleString()}</td>
           <td>
-            <button class="save-btn" data-id="${user.id}">Сохранить</button>
-            <button class="del-btn"  data-id="${user.id}">Удалить</button>
+            <button class="save-btn" data-id="${u.id}">Сохранить</button>
+            <button class="del-btn"  data-id="${u.id}">Удалить</button>
           </td>`
 				tbody.appendChild(tr)
 			})
 		})
-		.catch(err => {
-			alert('Не удалось загрузить пользователей: ' + err.message)
-		})
+		.catch(e => alert('Не удалось загрузить пользователей: ' + e))
 
-	// 4.5. Делегирование кнопок
 	tbody.addEventListener('click', async e => {
 		const id = +e.target.dataset.id
-		// Сохранить новую роль
+		// Сохранить
 		if (e.target.classList.contains('save-btn')) {
-			const sel = tbody.querySelector(`select[data-id="${id}"]`)
-			const role = sel.value
+			const role = tbody.querySelector(`select[data-id="${id}"]`).value
 			try {
 				const res = await fetch('/api/admin/users', {
 					method: 'PUT',
@@ -122,13 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ id, role }),
 				})
-				if (!res.ok) throw new Error(res.statusText)
+				if (!res.ok) throw new Error(await res.text())
 				alert('Роль обновлена')
 			} catch (err) {
-				alert('Ошибка обновления: ' + err.message)
+				alert('Ошибка: ' + err.message)
 			}
 		}
-		// Удалить пользователя
+		// Удалить
 		if (e.target.classList.contains('del-btn')) {
 			if (!confirm('Удалить пользователя?')) return
 			try {
@@ -138,36 +135,37 @@ document.addEventListener('DOMContentLoaded', () => {
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ id }),
 				})
-				if (!res.ok) throw new Error(res.statusText)
+				if (!res.ok) throw new Error(await res.text())
 				e.target.closest('tr').remove()
 				alert('Пользователь удалён')
 			} catch (err) {
-				alert('Ошибка удаления: ' + err.message)
+				alert('Ошибка: ' + err.message)
 			}
 		}
 	})
+}
 
-	// === 4.6. Управление курсами ===
-	const tbodyC = document.getElementById('coursesBody')
-	const formNew = document.getElementById('newCourseForm')
+// -----------------------
+// Управление курсами
+// -----------------------
+function initCourses() {
+	const tbody = document.getElementById('coursesBody')
+	const form = document.getElementById('newCourseForm')
 
-	// Загрузка существующих курсов
+	// загрузить
 	fetch('/api/admin/courses', { credentials: 'include' })
-		.then(res => {
-			if (!res.ok) throw new Error(res.statusText)
-			return res.json()
-		})
-		.then(courses => {
-			courses.forEach(c => {
+		.then(r => (r.ok ? r.json() : Promise.reject(r.statusText)))
+		.then(arr => {
+			arr.forEach(c => {
 				const tr = document.createElement('tr')
 				tr.innerHTML = `
-          <td><input data-id="${c.id}" class="edit-title"    value="${
+          <td><input class="edit-title"    data-id="${c.id}" value="${
 					c.title
 				}"></td>
-          <td><input data-id="${c.id}" class="edit-desc"     value="${
+          <td><input class="edit-desc"     data-id="${c.id}" value="${
 					c.description
 				}"></td>
-          <td><input data-id="${c.id}" class="edit-teacher"  value="${
+          <td><input class="edit-teacher"  data-id="${c.id}" value="${
 					c.teacher_id
 				}"></td>
           <td>${new Date(c.created_at).toLocaleDateString()}</td>
@@ -175,15 +173,15 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="save-course" data-id="${c.id}">Сохранить</button>
             <button class="del-course"  data-id="${c.id}">Удалить</button>
           </td>`
-				tbodyC.appendChild(tr)
+				tbody.appendChild(tr)
 			})
 		})
-		.catch(err => console.error('Курсы не загружены:', err))
+		.catch(e => console.error('Курсы не загружены:', e))
 
-	// Создание нового курса
-	formNew.addEventListener('submit', async e => {
+	// добавить
+	form.addEventListener('submit', async e => {
 		e.preventDefault()
-		const fd = new FormData(formNew)
+		const fd = new FormData(form)
 		const data = {
 			title: fd.get('title'),
 			description: fd.get('description'),
@@ -205,10 +203,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	})
 
-	// Делегирование кнопок в таблице курсов
-	tbodyC.addEventListener('click', async e => {
+	// делегирование кнопок
+	tbody.addEventListener('click', async e => {
 		const id = +e.target.dataset.id
-		// Сохранить изменения
+		// update
 		if (e.target.classList.contains('save-course')) {
 			const title = document.querySelector(`.edit-title[data-id="${id}"]`).value
 			const desc = document.querySelector(`.edit-desc[data-id="${id}"]`).value
@@ -226,13 +224,13 @@ document.addEventListener('DOMContentLoaded', () => {
 						teacher_id: tid,
 					}),
 				})
-				if (!res.ok) throw new Error(res.statusText)
+				if (!res.ok) throw new Error(await res.text())
 				alert('Курс обновлён')
 			} catch (err) {
-				alert('Ошибка обновления курса: ' + err.message)
+				alert('Ошибка: ' + err.message)
 			}
 		}
-		// Удалить курс
+		// delete
 		if (e.target.classList.contains('del-course')) {
 			if (!confirm('Удалить курс?')) return
 			try {
@@ -242,12 +240,12 @@ document.addEventListener('DOMContentLoaded', () => {
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ id }),
 				})
-				if (!res.ok) throw new Error(res.statusText)
+				if (!res.ok) throw new Error(await res.text())
 				e.target.closest('tr').remove()
 				alert('Курс удалён')
 			} catch (err) {
-				alert('Ошибка удаления курса: ' + err.message)
+				alert('Ошибка: ' + err.message)
 			}
 		}
 	})
-})
+}

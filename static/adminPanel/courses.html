@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Управление курсами — Админ‑панель</title>
+		<script src="/static/js/theme-init.js"></script>
+		<link rel="stylesheet" href="/static/adminPanel/style.css" />
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+		/>
+		<script src="/static/adminPanel/script.js" defer></script>
+	</head>
+	<body>
+		<header class="navbar">
+			<div class="logo">Set Learn</div>
+			<nav class="nav-links">
+				<a href="/static/mainPage/">Главная</a>
+				<a href="index.html">Панель админа</a>
+				<a href="users.html">Пользователи</a>
+				<a href="courses.html" class="active">Курсы</a>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="user" />
+				</div>
+			</div>
+		</header>
+
+		<main class="page-content">
+			<h1>Управление курсами</h1>
+			<div class="table-wrapper">
+				<table id="coursesTable">
+					<thead>
+						<tr>
+							<th>Название</th>
+							<th>Описание</th>
+							<th>ID преподавателя</th>
+							<th>Дата создания</th>
+							<th>Действия</th>
+						</tr>
+					</thead>
+					<tbody id="coursesBody"></tbody>
+				</table>
+			</div>
+
+			<form id="newCourseForm" class="course-form">
+				<input name="title" placeholder="Название курса" required />
+				<input name="description" placeholder="Описание курса" required />
+				<input
+					name="teacher_id"
+					type="number"
+					placeholder="ID преподавателя"
+					required
+				/>
+				<button type="submit"><i class="fas fa-plus"></i> Добавить курс</button>
+			</form>
+		</main>
+	</body>
+</html>

@@ -1,4 +1,4 @@
-/* === RESET & VARIABLES (копировать из courses/style.css) === */
+/* === RESET & VARIABLES === */
 *,
 *::before,
 *::after {
@@ -35,13 +35,13 @@ html {
 }
 body {
 	font-family: 'Inter', sans-serif;
-	line-height: 1.6;
 	background: var(--bg);
 	color: var(--text);
 	min-height: 100vh;
 	transition: background 0.5s ease, color 0.5s ease;
 }
-/* NAVBAR */
+
+/* === NAVBAR === */
 .navbar {
 	display: flex;
 	justify-content: space-between;
@@ -52,7 +52,6 @@ body {
 	position: sticky;
 	top: 0;
 	z-index: 100;
-	transition: background 0.5s ease;
 }
 .logo {
 	font-size: 1.25rem;
@@ -68,6 +67,7 @@ body {
 	text-decoration: none;
 	color: var(--text-muted);
 	font-weight: 500;
+	padding: var(--sp-xs) 0;
 	transition: color var(--trans);
 }
 .nav-links a.active,
@@ -91,8 +91,8 @@ body {
 #theme-toggle {
 	background: none;
 	border: none;
-	font-size: 1.25rem;
 	cursor: pointer;
+	font-size: 1.25rem;
 	margin-right: var(--sp-sm);
 	transition: transform 0.2s;
 }
@@ -110,201 +110,60 @@ body {
 .user-icon img:hover {
 	transform: scale(1.1);
 }
-/* PAGE CONTENT */
+
+/* === PAGE CONTENT === */
 .page-content {
-	max-width: 1000px;
+	max-width: 1200px;
 	margin: var(--sp-lg) auto;
 	padding: 0 var(--sp-md);
 }
 .page-content h1 {
 	margin-bottom: var(--sp-md);
 	color: var(--primary);
-	transition: color 0.5s ease;
+	transition: color var(--trans);
 }
 .page-content h2 {
 	margin-bottom: var(--sp-sm);
 }
 
-/* === Admin table styling (улучшенный) === */
-.table-wrapper {
-	margin-top: var(--sp-md);
-	background: var(--card-bg);
-	border: 1px solid var(--border);
-	border-radius: var(--radius);
-	overflow-x: auto;
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+/* === DASHBOARD TILES (index.html) === */
+.tiles {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--sp-md);
+	margin-top: var(--sp-lg);
 }
-
-.table-wrapper table {
-	width: 100%;
-	border-collapse: collapse;
-}
-
-.table-wrapper th,
-.table-wrapper td {
-	padding: var(--sp-sm) var(--sp-md);
-	text-align: left;
-}
-
-/* === Поля и кнопки в таблице курсов (как в таблице пользователей) === */
-.table-wrapper input.edit-title,
-.table-wrapper input.edit-desc,
-.table-wrapper input.edit-teacher {
-	padding: var(--sp-xs) var(--sp-sm);
-	border: 1px solid var(--border);
-	border-radius: var(--radius);
-	background: var(--card-bg);
-	color: var(--text);
-	width: 100%;
-	box-sizing: border-box;
-	transition: border-color var(--trans), box-shadow var(--trans);
-}
-.table-wrapper input.edit-title:focus,
-.table-wrapper input.edit-desc:focus,
-.table-wrapper input.edit-teacher:focus {
-	outline: none;
-	border-color: var(--primary);
-	box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
-}
-
-.table-wrapper button.save-course,
-.table-wrapper button.save-btn {
+.card {
+	flex: 1 1 30%;
 	background: var(--primary);
 	color: var(--bg);
-	padding: var(--sp-xs) var(--sp-sm);
-	border: none;
+	text-decoration: none;
 	border-radius: var(--radius);
-	cursor: pointer;
-	transition: opacity var(--trans);
-	margin-right: var(--sp-xs);
-}
-.table-wrapper button.save-course:hover,
-.table-wrapper button.save-btn:hover {
-	opacity: 0.8;
-}
-
-.table-wrapper button.del-course,
-.table-wrapper button.del-btn {
-	background: transparent;
-	border: 1px solid var(--text-muted);
-	color: var(--text-muted);
-	padding: var(--sp-xs) var(--sp-sm);
-	border-radius: var(--radius);
-	cursor: pointer;
-	transition: opacity var(--trans);
-}
-.table-wrapper button.del-course:hover,
-.table-wrapper button.del-btn:hover {
-	opacity: 0.8;
-}
-
-/* Заголовки */
-.table-wrapper thead {
-	background: var(--primary);
-}
-.table-wrapper thead th {
-	color: var(--bg);
-	font-weight: 600;
-	/* скругляем только углы шапки */
-}
-.table-wrapper thead th:first-child {
-	border-top-left-radius: var(--radius);
-}
-.table-wrapper thead th:last-child {
-	border-top-right-radius: var(--radius);
-}
-
-/* Строки */
-.table-wrapper tbody tr:nth-child(odd) {
-	background: var(--bg);
-}
-.table-wrapper tbody tr:nth-child(even) {
-	background: var(--border);
-}
-.table-wrapper tbody tr:hover {
-	background: rgba(79, 70, 229, 0.1); /* лёгкий фиолетовый hover */
-	color: var(--text);
-}
-
-/* Скругление углов внизу (последняя строка) */
-.table-wrapper tbody tr:last-child td:first-child {
-	border-bottom-left-radius: var(--radius);
-}
-.table-wrapper tbody tr:last-child td:last-child {
-	border-bottom-right-radius: var(--radius);
-}
-
-/* Кнопки */
-.table-wrapper button.save-btn {
-	background: var(--primary);
-	color: var(--bg);
-	padding: var(--sp-xs) var(--sp-sm);
-	border: none;
-	border-radius: var(--radius);
-	cursor: pointer;
-	transition: opacity var(--trans);
-	margin-right: var(--sp-xs);
-}
-.table-wrapper button.del-btn {
-	background: transparent;
-	border: 1px solid var(--text-muted);
-	color: var(--text-muted);
-	padding: var(--sp-xs) var(--sp-sm);
-	border-radius: var(--radius);
-	cursor: pointer;
-	transition: opacity var(--trans);
-}
-.table-wrapper button.save-btn:hover,
-.table-wrapper button.del-btn:hover {
-	opacity: 0.8;
-}
-
-/* === Стилизация выпадающего списка ролей === */
-.table-wrapper select {
-	/* Убираем дефолтный вид у разных браузеров */
-	-webkit-appearance: none;
-	-moz-appearance: none;
-	appearance: none;
-
-	/* Отступы и размеры */
-	padding: var(--sp-xs) var(--sp-lg) var(--sp-xs) var(--sp-sm);
-	font-size: 0.95rem;
-	line-height: 1.3;
-
-	/* Цвета и рамка */
-	background-color: var(--card-bg);
-	color: var(--text);
-	border: 1px solid var(--border);
-	border-radius: var(--radius);
-
-	/* Курсор и переход */
-	cursor: pointer;
-	transition: border-color var(--trans), box-shadow var(--trans);
-
-	/* Подстраиваем “стрелку” */
-	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.666992 0.666504L5.00066 4.99917L9.33433 0.666504' stroke='%23999' stroke-width='1.2'/%3E%3C/svg%3E");
-	background-repeat: no-repeat;
-	background-position: right var(--sp-sm) center;
-	background-size: 0.6em;
-}
-
-/* Подсветка при фокусе */
-.table-wrapper select:focus {
-	outline: none;
-	border-color: var(--primary);
-	box-shadow: 0 0 0 2px rgba(79, 46, 229, 0.2);
-}
-
-/* === Стили для формы создания/редактирования курса === */
-.course-form {
-	margin-top: var(--sp-md);
-	display: grid;
-	grid-template-columns: 1fr 1fr 1fr auto;
+	padding: var(--sp-lg) var(--sp-md);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 	gap: var(--sp-sm);
+	font-size: 1.1rem;
+	transition: background var(--trans);
+}
+.card i {
+	font-size: 2rem;
+}
+.card:hover {
+	background: #3c3bd1;
+}
+
+/* === FORM GRID (new course) === */
+.course-form {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) auto;
+	gap: var(--sp-sm);
+	margin-top: var(--sp-md);
 	align-items: end;
 }
-
-.course-form input {
+.course-form input,
+.course-form select {
 	padding: var(--sp-sm);
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
@@ -312,13 +171,15 @@ body {
 	color: var(--text);
 	transition: border-color var(--trans);
 }
-
-.course-form input:focus {
+.course-form input:focus,
+.course-form select:focus {
 	outline: none;
 	border-color: var(--primary);
 }
-
 .course-form button {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-xs);
 	padding: var(--sp-sm) var(--sp-md);
 	background: var(--primary);
 	color: var(--bg);
@@ -327,14 +188,150 @@ body {
 	cursor: pointer;
 	transition: opacity var(--trans);
 }
-
 .course-form button:hover {
 	opacity: 0.9;
 }
 
-/* Мобильная версия: форма в один столбец */
+/* === TABLE WRAPPER & TABLE STYLES === */
+.table-wrapper {
+	margin-top: var(--sp-md);
+	overflow-x: auto;
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+.table-wrapper table {
+	width: 100%;
+	min-width: 700px;
+	border-collapse: collapse;
+	table-layout: auto;
+}
+.table-wrapper th,
+.table-wrapper td {
+	padding: var(--sp-sm) var(--sp-md);
+	text-align: left;
+	white-space: nowrap;
+}
+.table-wrapper thead {
+	background: var(--primary);
+}
+.table-wrapper thead th {
+	color: var(--bg);
+	font-weight: 600;
+}
+.table-wrapper thead th:first-child {
+	border-top-left-radius: var(--radius);
+}
+.table-wrapper thead th:last-child {
+	border-top-right-radius: var(--radius);
+}
+.table-wrapper tbody tr:nth-child(odd) {
+	background: var(--bg);
+}
+.table-wrapper tbody tr:nth-child(even) {
+	background: var(--border);
+}
+.table-wrapper tbody tr:hover {
+	background: rgba(79, 70, 229, 0.1);
+}
+.table-wrapper tbody tr:last-child td:first-child {
+	border-bottom-left-radius: var(--radius);
+}
+.table-wrapper tbody tr:last-child td:last-child {
+	border-bottom-right-radius: var(--radius);
+}
+
+/* === EDITABLE FIELDS === */
+input.edit-title,
+input.edit-desc,
+input.edit-teacher {
+	width: 100%;
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--card-bg);
+	color: var(--text);
+	transition: border-color var(--trans);
+}
+input.edit-title:focus,
+input.edit-desc:focus,
+input.edit-teacher:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+/* === CRUD BUTTONS === */
+button.save-btn,
+button.save-course,
+button.save-btn {
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+	margin-right: var(--sp-xs);
+}
+button.save-btn:hover,
+button.save-course:hover {
+	opacity: 0.8;
+}
+button.del-btn,
+button.del-course {
+	background: transparent;
+	border: 1px solid var(--text-muted);
+	color: var(--text-muted);
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+}
+button.del-btn:hover,
+button.del-course:hover {
+	opacity: 0.8;
+	background: var(--text-muted);
+	color: var(--bg);
+}
+
+/* === SELECT (roles) === */
+.table-wrapper select {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	padding: var(--sp-xs) var(--sp-lg) var(--sp-xs) var(--sp-sm);
+	font-size: 0.95rem;
+	line-height: 1.3;
+	background: var(--card-bg);
+	color: var(--text);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: border-color var(--trans), box-shadow var(--trans);
+	background-image: url("data:image/svg+xml,%3Csvg width='10' height='6'%3E%3Cpath d='M0 0l5 6l5-6' stroke='%23999' stroke-width='1.2'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right var(--sp-sm) center;
+	background-size: 0.6em;
+}
+.table-wrapper select:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+/* === MOBILE ADJUSTMENTS === */
 @media (max-width: 600px) {
+	.tiles {
+		flex-direction: column;
+	}
+	.table-wrapper,
 	.course-form {
-		grid-template-columns: 1fr;
+		overflow-x: auto;
+	}
+	.nav-links {
+		flex-direction: column;
+		gap: var(--sp-xs);
 	}
 }
