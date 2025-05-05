@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	loadUserIcon().then(user => {
 		if (!user) return
 		if (user.role === 'admin') {
-			const adminTile = document.getElementById('go-to-admin')
+			const adminTile = document.getElementById('nav-admin')
 			if (adminTile) adminTile.style.display = 'flex'
 		}
 		if (user.role === 'teacher') {
