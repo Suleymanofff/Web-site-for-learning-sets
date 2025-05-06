@@ -1002,3 +1002,93 @@ func GetCourseByID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
 	}
 }
+
+// GET /api/courses/{courseID}/theory
+// старый вариант (несуществующая таблица theories):
+// SELECT id, title, content FROM theories WHERE course_id = $1
+
+// Новый вариант — правильный, для таблицы theory:
+func GetTheory(w http.ResponseWriter, r *http.Request) {
+	// разбор пути
+	p := strings.TrimPrefix(r.URL.Path, "/api/courses/")
+	parts := strings.Split(p, "/") // ["4","theory"]
+	if len(parts) != 2 || parts[1] != "theory" {
+		http.NotFound(w, r)
+		return
+	}
+	courseID := parts[0]
+
+	type Item struct {
+		ID      int    `json:"id"`
+		Title   string `json:"title"`
+		Summary string `json:"summary"`
+		Content string `json:"content"`
+	}
+
+	rows, err := db.Query(`
+        SELECT id, title, summary, content
+        FROM theory
+        WHERE course_id = $1
+        ORDER BY id
+    `, courseID)
+	if err != nil {
+		log.Println("GetTheory query error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var items []Item
+	for rows.Next() {
+		var it Item
+		if err := rows.Scan(&it.ID, &it.Title, &it.Summary, &it.Content); err != nil {
+			log.Println("GetTheory scan error:", err)
+			continue
+		}
+		items = append(items, it)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(items)
+}
+
+// GET /api/courses/{courseID}/tests
+func GetTests(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) != 4 {
+		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
+	}
+	courseID := parts[2]
+
+	rows, err := db.Query(`
+        SELECT t.id, t.title,
+            (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) as question_count
+        FROM tests t
+        WHERE t.course_id = $1
+        ORDER BY t.id
+    `, courseID)
+	if err != nil {
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	type Test struct {
+		ID            int    `json:"id"`
+		Title         string `json:"title"`
+		QuestionCount int    `json:"question_count"`
+	}
+
+	var tests []Test
+	for rows.Next() {
+		var t Test
+		if err := rows.Scan(&t.ID, &t.Title, &t.QuestionCount); err != nil {
+			continue
+		}
+		tests = append(tests, t)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tests)
+}

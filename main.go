@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -137,8 +138,38 @@ func main() {
 		RequireAnyRole([]string{"admin", "teacher", "student"}, http.HandlerFunc(GetCourses)),
 	)
 
+	// apiMux.Handle("/api/courses/", RequireAnyRole(
+	// 	[]string{"admin", "teacher", "student"}, http.HandlerFunc(GetCourseByID),
+	// ))
+
 	apiMux.Handle("/api/courses/", RequireAnyRole(
-		[]string{"admin", "teacher", "student"}, http.HandlerFunc(GetCourseByID),
+		[]string{"admin", "teacher", "student"},
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// /api/courses/{id}
+			// /api/courses/{id}/theory
+			// /api/courses/{id}/tests
+
+			// отрезаем префикс
+			p := strings.TrimPrefix(r.URL.Path, "/api/courses/")
+			parts := strings.Split(p, "/")
+
+			switch {
+			// GET /api/courses/{id}/theory
+			case len(parts) == 2 && parts[1] == "theory":
+				GetTheory(w, r)
+
+			// GET /api/courses/{id}/tests
+			case len(parts) == 2 && parts[1] == "tests":
+				GetTests(w, r)
+
+			// GET /api/courses/{id}
+			case len(parts) == 1 && parts[0] != "":
+				GetCourseByID(w, r)
+
+			default:
+				http.NotFound(w, r)
+			}
+		}),
 	))
 
 	// Оборачиваем API в JWT‑middleware

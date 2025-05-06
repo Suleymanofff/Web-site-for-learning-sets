@@ -1,32 +1,25 @@
-// 1. Функция навигации
 function navigate(url) {
 	window.location.href = url
 }
 
-// 2. Извлечение параметра course из URL
 function getCourseId() {
 	const params = new URLSearchParams(window.location.search)
-	return params.get('course')
+	return params.get('course') || params.get('id')
 }
 
-// 3. Пользователь и тема — вынесены из общего script.js
 async function loadUserIcon() {
 	try {
 		const res = await fetch('/api/profile', { credentials: 'same-origin' })
 		if (!res.ok) return null
 		const user = await res.json()
 		if (user.avatar_path) {
-			const navImg = document.querySelector('.user-icon img')
-			if (navImg) navImg.src = user.avatar_path
+			document.querySelector('.user-icon img').src = user.avatar_path
 		}
-		// Показ ссылок по ролям
 		if (user.role === 'admin') {
-			const admin = document.getElementById('nav-admin')
-			if (admin) admin.style.display = 'inline-block'
+			document.getElementById('nav-admin').style.display = 'inline-block'
 		}
 		if (user.role === 'teacher') {
-			const teacher = document.getElementById('nav-teacher')
-			if (teacher) teacher.style.display = 'inline-block'
+			document.getElementById('nav-teacher').style.display = 'inline-block'
 		}
 		return user
 	} catch (err) {
@@ -68,69 +61,91 @@ function initThemeToggle() {
 	}
 }
 
-// 4. Загрузка данных курса и рендер
+function getToken() {
+	const match = document.cookie.match(/token=([^;]+)/)
+	return match ? match[1] : null
+}
+
 async function loadCoursePage() {
 	const courseId = getCourseId()
 	if (!courseId) return
 
-	// Получаем данные курса
-	let course
 	try {
 		const res = await fetch(`/api/courses/${courseId}`, {
 			credentials: 'same-origin',
 		})
 		if (!res.ok) throw new Error(`Status ${res.status}`)
-		course = await res.json()
+		const course = await res.json()
+		document.getElementById('course-title').textContent = course.title
 	} catch (err) {
 		console.error('Error loading course:', err)
 		document.getElementById('course-title').textContent =
 			'Ошибка загрузки курса'
-		return
 	}
-	document.getElementById('course-title').textContent = course.title
 
-	// Рендер теории
-	const theoryList = document.getElementById('theory-list')
-	if (Array.isArray(course.theory) && course.theory.length) {
-		theoryList.innerHTML = ''
-		course.theory.forEach(item => {
+	await loadTheory(courseId)
+	await loadTests(courseId)
+}
+
+async function loadTheory(courseId) {
+	const container = document.getElementById('theory-list')
+	container.innerHTML = 'Загрузка теории...'
+	try {
+		const res = await fetch(`/api/courses/${courseId}/theory`, {
+			headers: { Authorization: `Bearer ${getToken()}` },
+			credentials: 'same-origin',
+		})
+		if (!res.ok) throw new Error('Ошибка загрузки теории')
+		const data = await res.json()
+		container.innerHTML = ''
+		data.forEach(item => {
 			const div = document.createElement('div')
 			div.className = 'card'
 			div.innerHTML = `
-        <h3>${item.title}</h3>
-        <p>${item.summary}</p>
-        <button onclick="navigate('/static/theory/index.html?topic=${item.id}')">Читать</button>
-      `
-			theoryList.appendChild(div)
+				<h3>${item.title}</h3>
+				<p>${item.summary}</p>
+				<button onclick="navigate('/static/theory/index.html?topic=${item.id}')">Читать</button>
+			`
+			container.appendChild(div)
 		})
-	} else {
-		theoryList.textContent = 'Теории пока нет.'
-	}
-
-	// Рендер тестов
-	const testsList = document.getElementById('tests-list')
-	if (Array.isArray(course.tests) && course.tests.length) {
-		testsList.innerHTML = ''
-		course.tests.forEach(test => {
-			const div = document.createElement('div')
-			div.className = 'card'
-			div.innerHTML = `
-        <h3>${test.title}</h3>
-        <p>Вопросов: ${test.question_count}</p>
-        <button onclick="navigate('/static/questions/index.html?test=${test.id}')">Пройти тест</button>
-      `
-			testsList.appendChild(div)
-		})
-	} else {
-		testsList.textContent = 'Тестов пока нет.'
+	} catch (err) {
+		container.textContent = 'Ошибка при загрузке теории'
 	}
 }
 
-// 5. Инициализация документа
+async function loadTests(courseId) {
+	const container = document.getElementById('tests-list')
+	container.innerHTML = 'Загрузка тестов...'
+	try {
+		const res = await fetch(`/api/courses/${courseId}/tests`, {
+			headers: { Authorization: `Bearer ${getToken()}` },
+			credentials: 'same-origin',
+		})
+		if (!res.ok) {
+			const text = await res.text()
+			console.error('Ошибка загрузки тестов:', res.status, text)
+			throw new Error('Ошибка загрузки тестов')
+		}
+		const data = await res.json()
+		container.innerHTML = ''
+		data.forEach(test => {
+			const div = document.createElement('div')
+			div.className = 'card'
+			div.innerHTML = `
+				<h3>${test.title}</h3>
+				<p>Вопросов: ${test.question_count}</p>
+				<button onclick="navigate('/static/questions/index.html?test=${test.id}')">Пройти тест</button>
+			`
+			container.appendChild(div)
+		})
+	} catch (err) {
+		console.error('Ошибка в loadTests:', err)
+		container.textContent = 'Ошибка при загрузке тестов'
+	}
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-	// Инициализируем тему и иконку пользователя
 	initThemeToggle()
 	loadUserIcon()
-	// Загружаем контент курса
 	loadCoursePage()
 })
