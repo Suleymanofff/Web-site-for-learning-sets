@@ -56,16 +56,17 @@ body {
 	font-size: 1.25rem;
 	color: var(--primary);
 	font-weight: 700;
+	cursor: pointer;
 }
 .nav-links {
 	display: flex;
 	gap: var(--sp-md);
 }
 .nav-links a {
+	position: relative;
 	text-decoration: none;
 	color: var(--text-muted);
 	font-weight: 500;
-	position: relative;
 	padding: var(--sp-xs) 0;
 }
 .nav-links a.active,
@@ -117,7 +118,7 @@ body {
 	transition: color var(--trans);
 }
 
-/* TILES (index) */
+/* TILES */
 .tiles {
 	display: flex;
 	gap: var(--sp-md);
@@ -160,6 +161,11 @@ body {
 	outline: none;
 	border-color: var(--primary);
 }
+.course-form label {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-xs);
+}
 .course-form button {
 	display: flex;
 	align-items: center;
@@ -176,7 +182,7 @@ body {
 	opacity: 0.9;
 }
 
-/* COMMON TABLE STYLES */
+/* TABLE WRAPPER */
 .table-wrapper {
 	margin-top: var(--sp-md);
 	overflow-x: auto;
@@ -187,7 +193,6 @@ body {
 }
 .table-wrapper table {
 	width: 100%;
-	min-width: 700px;
 	border-collapse: collapse;
 	table-layout: auto;
 }
@@ -224,28 +229,6 @@ body {
 }
 .table-wrapper tbody tr:last-child td:last-child {
 	border-bottom-right-radius: var(--radius);
-}
-
-/* EDITABLE FIELDS */
-/* Изменили background на var(--bg) и задали цвет var(--text) */
-input.edit-title,
-input.edit-desc,
-input.edit-text {
-	width: 100%;
-	padding: var(--sp-xs) var(--sp-sm);
-	border: 1px solid var(--border);
-	border-radius: var(--radius);
-	background: var(--bg);
-	color: var(--text);
-	transition: border-color var(--trans), background var(--trans),
-		color var(--trans);
-}
-input.edit-title:focus,
-input.edit-desc:focus,
-input.edit-text:focus {
-	outline: none;
-	border-color: var(--primary);
-	box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
 }
 
 /* CRUD BUTTONS */
@@ -293,41 +276,60 @@ button.del-option:hover {
 	opacity: 0.8;
 }
 
+/* EDITABLE FIELDS */
+input.edit-text {
+	width: 100%;
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--bg);
+	color: var(--text);
+	transition: border-color var(--trans), background var(--trans),
+		color var(--trans);
+}
+input.edit-text:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
 /* SELECT & CHECKBOX */
 select.edit-type {
 	-webkit-appearance: none;
 	-moz-appearance: none;
 	appearance: none;
 	padding: var(--sp-xs) var(--sp-sm);
+	background: var(--card-bg)
+		url("data:image/svg+xml;charset=UTF-8,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M0 0l5 6l5-6' stroke='%23999' stroke-width='1.2'/%3E%3C/svg%3E")
+		no-repeat right var(--sp-sm) center / 0.6em;
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
-	background: var(--card-bg)
-		url("data:image/svg+xml;charset=UTF-8,%3Csvg width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6l5-6'%3E%3C/path%3E%3C/svg%3E")
-		no-repeat right var(--sp-sm) center / 0.6em;
 	cursor: pointer;
-	transition: border-color var(--trans);
+	transition: border-color var(--trans), box-shadow var(--trans);
 }
 select.edit-type:focus {
 	outline: none;
 	border-color: var(--primary);
 	box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
 }
-input.edit-multi[type='checkbox'],
-.new-opt-correct[type='checkbox'] {
+input.edit-multi[type='checkbox'] {
 	transform: scale(1.2);
 	cursor: pointer;
 }
 
-/* === OPTIONS WRAPPER & TABLE === */
-.options-row {
-	background: var(--bg) !important;
+/* OPTIONS WRAPPER */
+.options-wrapper {
+	position: relative;
+	z-index: 1; /* создаём контекст наложения */
 }
+
 .options-row .options-wrapper {
 	padding: var(--sp-sm);
-	background: var(--card-bg);
+	margin-top: var(--sp-md);
+	background: var(--bg);
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
-	box-shadow: inset 0 0 0 1px var(--border);
+	overflow-x: auto;
 }
 .options-table {
 	width: 100%;
@@ -341,82 +343,433 @@ input.edit-multi[type='checkbox'],
 	text-align: left;
 	white-space: nowrap;
 }
-
-/* НЕСКЛАДИВАЕМАЯ И ВСЕГДА ВИДИМАЯ ШАПКА ВАРИАНТОВ */
-.options-row .options-wrapper .options-table thead {
-	display: table-header-group;
+.options-table thead {
 	background: var(--primary);
+	position: sticky;
+	top: 0;
+	z-index: 2;
 }
-.options-row .options-wrapper .options-table thead th {
+.options-table thead th {
 	color: var(--bg);
 	font-weight: 600;
 	padding: var(--sp-sm) var(--sp-md);
 }
 
-/* NEW OPTION ROW */
-/* Изменили background на var(--bg) и цвет var(--text) */
-.new-option-row input.new-opt-text {
+/* === Вложенная таблица вариантов: теперь полностью как основная === */
+.options-wrapper table.options-table {
+	/* ширина и раскладка */
 	width: 100%;
+	min-width: auto;
+	border-collapse: collapse;
+	table-layout: auto;
+
+	/* визуальные рамки и фон */
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+
+	margin-bottom: var(--sp-sm);
+}
+
+/* ячейки */
+.options-wrapper table.options-table th,
+.options-wrapper table.options-table td {
+	padding: var(--sp-sm) var(--sp-md);
+	text-align: left;
+	white-space: nowrap;
+	border: 1px solid var(--border);
+}
+
+/* шапка */
+.options-wrapper table.options-table thead {
+	opacity: 1 !important;
+	visibility: visible !important;
+	display: table-header-group !important;
+	background: rgba(255, 255, 255, 0.95); /* полупрозрачный фон */
+	border: 1px solid red;
+	position: sticky;
+	top: 0;
+	z-index: 10; /* выше других ячеек */
+}
+.options-wrapper table.options-table thead th {
+	color: var(--bg);
+	font-weight: 600;
+}
+/* скругляем уголки шапки */
+.options-wrapper table.options-table thead th:first-child {
+	border-top-left-radius: var(--radius);
+}
+.options-wrapper table.options-table thead th:last-child {
+	border-top-right-radius: var(--radius);
+}
+
+/* зебра-через-одну строк */
+.options-wrapper table.options-table tbody tr:nth-child(odd) {
+	background: var(--bg);
+}
+.options-wrapper table.options-table tbody tr:nth-child(even) {
+	background: var(--border);
+}
+
+/* hover-эффект */
+.options-wrapper table.options-table tbody tr:hover {
+	background: rgba(79, 70, 229, 0.1);
+}
+
+/* скругляем уголки последней строки */
+.options-wrapper table.options-table tbody tr:last-child td:first-child {
+	border-bottom-left-radius: var(--radius);
+}
+.options-wrapper table.options-table tbody tr:last-child td:last-child {
+	border-bottom-right-radius: var(--radius);
+}
+
+/* Шапка таблицы — стиль как у основной */
+.options-wrapper table.options-table thead {
+	background-color: var(--primary);
+}
+
+.options-wrapper table.options-table thead th {
+	color: var(--bg); /* светлый текст */
+	font-weight: 600;
+	padding: var(--sp-sm) var(--sp-md);
+	text-align: left;
+	white-space: nowrap;
+	border: 1px solid var(--border);
+}
+
+/* Скругление углов */
+.options-wrapper table.options-table thead th:first-child {
+	border-top-left-radius: var(--radius);
+}
+.options-wrapper table.options-table thead th:last-child {
+	border-top-right-radius: var(--radius);
+}
+
+/* NEW OPTION FORM */
+.option-form {
+	display: grid;
+	grid-template-columns: 1fr auto auto;
+	gap: var(--sp-sm);
+	align-items: center;
+	margin-top: var(--sp-sm);
+}
+.option-form input[type='text'] {
 	padding: var(--sp-xs) var(--sp-sm);
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
-	background: var(--bg);
-	color: var(--text);
-	transition: border-color var(--trans), background var(--trans),
-		color var(--trans);
+	width: 100%;
 }
-.new-option-row input.new-opt-correct {
+.option-form input[type='checkbox'] {
 	transform: scale(1.2);
+	margin-left: var(--sp-xs);
 	cursor: pointer;
 }
-.new-option-row button.save-new-option {
+.option-form button {
+	padding: var(--sp-xs) var(--sp-sm);
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+}
+.option-form button:hover {
+	opacity: 0.8;
+}
+
+/* ======== МОДАЛЬНОЕ ОКНО ======== */
+.modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 2000;
+}
+
+.modal {
+	background: var(--card-bg);
+	color: var(--text);
+	width: 90%;
+	max-width: 600px;
+	border-radius: var(--radius);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.modal-header,
+.modal-footer {
+	padding: var(--sp-sm) var(--sp-md);
+	background: var(--primary);
+	color: var(--bg);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.modal-header h3 {
+	margin: 0;
+	font-size: 1.25rem;
+}
+
+.modal-close {
+	background: none;
+	border: none;
+	font-size: 1.5rem;
+	color: var(--bg);
+	cursor: pointer;
+	line-height: 1;
+}
+
+.modal-body {
+	padding: var(--sp-md);
+	max-height: 60vh;
+	overflow-y: auto;
+}
+
+/* Форма быстрого добавления */
+.quick-form .form-group {
+	margin-bottom: var(--sp-md);
+}
+.quick-form .form-group.inline {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-md);
+}
+.quick-form label {
+	font-weight: 500;
+}
+.quick-form textarea,
+.quick-form select,
+.quick-form input[type='text'] {
+	width: 100%;
+	padding: var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--card-bg);
+	color: var(--text);
+	transition: border-color var(--trans);
+}
+.quick-form textarea:focus,
+.quick-form select:focus {
+	outline: none;
+	border-color: var(--bg);
+}
+.btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--sp-xs);
+	padding: var(--sp-xs) var(--sp-sm);
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+}
+.btn:hover {
+	opacity: 0.8;
+}
+
+/* Список вопросов внутри модалки */
+.quick-questions-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	max-height: 25vh;
+	overflow-y: auto;
+	border-top: 1px solid var(--border);
+}
+.quick-questions-list .question-item {
+	padding: var(--sp-sm);
+	margin: 0;
+	border-bottom: 1px solid var(--border);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	position: relative;
+}
+.question-item .question-text {
+	flex: 1;
+	margin-right: var(--sp-md);
+}
+.question-item .expand-options {
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	border-radius: 50%;
+	width: 1.5rem;
+	height: 1.5rem;
+	font-size: 1rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+/* — Основной контейнер вопроса — */
+.question-item {
+	display: flex;
+	flex-direction: column;
+}
+
+/* 2) шапка с текстом + кнопкой */
+.question-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+}
+
+/* — Верхняя строка: вопрос + плюсик — */
+.question-item .question-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+/* текст вопроса — не блочный, чтобы не «ломал» flex */
+.question-header .question-text {
+	display: inline-block; /* или просто оставить span по умолчанию */
+	margin: 0; /* сбросьте любые внешние отступы */
+	flex: 1; /* чтобы вопрос занимал всё свободное место */
+}
+
+.question-header .expand-options {
+	flex: 0 0 auto;
+	margin-left: var(--sp-sm);
+}
+
+/* конструктор вариантов — скрыт по умолчанию и всегда снизу */
+.options-builder {
+	display: none;
+	margin-top: var(--sp-sm);
+	clear: both; /* на всякий случай */
+	width: 100%;
+	/* ваши существующие стили… */
+	padding: var(--sp-sm);
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+}
+
+.question-item.expanded > .options-builder {
+	display: block;
+}
+
+/* — При открытии (когда .question-item получает .expanded) — */
+.question-item.expanded > .options-builder {
+	display: block;
+}
+
+.options-list {
+	list-style: none;
+	margin: 0 0 var(--sp-sm) 0;
+	padding: 0;
+}
+.options-list .option-item {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-md);
+	margin-bottom: var(--sp-xs);
+}
+.options-list .option-text {
+	flex: 1;
+}
+.new-option-form {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-sm);
+}
+.new-option-form input[type='text'] {
+	flex: 1;
+	padding: var(--sp-xs);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+}
+.new-option-form label {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-xs);
+}
+.new-option-form button {
 	background: var(--primary);
 	color: var(--bg);
 	border: none;
 	padding: var(--sp-xs) var(--sp-sm);
 	border-radius: var(--radius);
+}
+
+/* Кнопка "Сохранить все вопросы" */
+.save-questions {
+	margin: var(--sp-sm) var(--sp-md);
+}
+.save-questions[disabled] {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+/* Подтверждение закрытия без сохранения */
+.unsaved-confirm {
+	position: absolute;
+	top: var(--sp-sm);
+	right: var(--sp-sm);
+	background: var(--card-bg);
+	color: var(--text);
+	border: 1px solid var(--primary);
+	border-radius: var(--radius);
+	padding: var(--sp-sm);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+	animation: fadeIn 0.3s ease;
+}
+.unsaved-confirm p {
+	margin-bottom: var(--sp-sm);
+}
+.unsaved-confirm button {
+	margin-right: var(--sp-sm);
+	padding: var(--sp-xs) var(--sp-sm);
+	border: none;
+	border-radius: var(--radius);
 	cursor: pointer;
-	transition: opacity var(--trans);
 }
-.new-option-row button.save-new-option:hover {
-	opacity: 0.8;
-}
-
-/* === Стили для <select> на страницах Тестов и Вопросов === */
-#newTestForm select,
-#newQuestionForm select {
-	/* фон того же цвета, что и обычный фон страницы */
-	background: var(--bg);
-	/* цвет текста того же, что в теле */
-	color: var(--text);
-	/* убираем старый фон иконки, если он есть */
-	background-image: none;
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
-#newTestForm select:focus,
-#newQuestionForm select:focus {
-	/* при фокусе оставляем такой же фон/цвет */
-	background: var(--bg);
-	color: var(--text);
-	/* подчёркиваем рамку */
-	border-color: var(--primary);
-	box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+.popover {
+	z-index: -1 !important;
+	position: absolute !important;
+	pointer-events: none !important;
+	background: transparent !important;
 }
 
-/* Убедимся, что сами <option> тоже читаемы */
-#newTestForm select option,
-#newQuestionForm select option {
-	background: var(--bg);
-	color: var(--text);
+table.variant-table thead {
+	opacity: 1 !important;
+	visibility: visible !important;
+	display: table-header-group !important;
 }
+
+/* ======= END MODAL STYLES ======= */
 
 /* MOBILE */
 @media (max-width: 600px) {
-	.tiles {
-		flex-direction: column;
-	}
-	.table-wrapper,
 	.course-form {
+		grid-template-columns: 1fr;
+	}
+	.table-wrapper {
 		overflow-x: auto;
 	}
 	.nav-links {

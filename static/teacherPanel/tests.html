@@ -2,20 +2,21 @@
 <html lang="ru">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width,initial-scale=1" />
-		<title>Тесты — Панель учителя</title>
-
-		<!-- 1. Сначала — инициализация темы -->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Панель учителя — Тесты</title>
 		<script src="/static/js/theme-init.js"></script>
-
-		<link rel="stylesheet" href="style.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+		/>
+		<script src="/static/teacherPanel/script.js" defer></script>
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('index.html')">Set Learn</div>
 			<nav class="nav-links">
-				<a href="/static/mainPage/">Главная</a>
-				<a href="index.html">Панель учителя</a>
+				<a href="index.html">Главная</a>
 				<a href="courses.html">Курсы</a>
 				<a href="tests.html" class="active">Тесты</a>
 				<a href="questions.html">Вопросы</a>
@@ -23,21 +24,23 @@
 			<div class="actions">
 				<button id="theme-toggle" aria-label="Переключить тему"></button>
 				<div class="user-icon" onclick="navigate('/profile')">
-					<img src="/static/img/userDefault.png" alt="User" />
+					<img src="/static/img/userDefault.png" alt="userDefault" />
 				</div>
 			</div>
 		</header>
 
 		<main class="page-content">
 			<h1>Управление тестами</h1>
+
 			<form id="newTestForm" class="course-form">
-				<input name="title" placeholder="Название теста" required />
-				<input name="description" placeholder="Описание теста" required />
 				<select name="course_id" required>
 					<option value="">Выберите курс</option>
 				</select>
+				<input name="title" placeholder="Название теста" required />
+				<input name="description" placeholder="Описание теста" required />
 				<button type="submit"><i class="fas fa-plus"></i> Добавить</button>
 			</form>
+
 			<div class="table-wrapper">
 				<table id="testsTable">
 					<thead>
@@ -45,7 +48,7 @@
 							<th>Название</th>
 							<th>Описание</th>
 							<th>Курс ID</th>
-							<th>Дата создания</th>
+							<th>Дата создания</th>
 							<th>Действия</th>
 						</tr>
 					</thead>
@@ -54,6 +57,58 @@
 			</div>
 		</main>
 
-		<script src="script.js"></script>
+		<!-- Быстрая модалка добавления вопросов к только что созданному тесту -->
+		<div id="questionModal" class="modal-overlay" style="display: none">
+			<div class="modal">
+				<div class="modal-header">
+					<h3>Добавить вопросы</h3>
+					<button class="modal-close" id="closeQuestionModal">&times;</button>
+				</div>
+				<div class="modal-body">
+					<form id="quickQuestionForm" class="quick-form">
+						<input type="hidden" id="quickTestId" name="test_id" />
+						<div class="form-group">
+							<label for="question_text">Текст вопроса</label>
+							<textarea
+								id="question_text"
+								name="question_text"
+								required
+							></textarea>
+						</div>
+						<div class="form-group inline">
+							<label for="question_type">Тип вопроса</label>
+							<select id="question_type" name="question_type">
+								<option value="open">Открытый</option>
+								<option value="closed">Закрытый</option>
+							</select>
+							<label>
+								<input
+									type="checkbox"
+									id="multiple_choice"
+									name="multiple_choice"
+								/>
+								Несколько ответов
+							</label>
+						</div>
+						<button type="submit" class="btn add-question">
+							<i class="fas fa-plus"></i> Добавить
+						</button>
+					</form>
+					<ul id="quickQuestionsList" class="quick-questions-list"></ul>
+				</div>
+				<div class="modal-footer">
+					<button class="btn save-questions" id="saveQuickQuestions" disabled>
+						<i class="fas fa-save"></i> Сохранить всё
+					</button>
+				</div>
+				<div id="unsavedConfirm" class="unsaved-confirm" style="display: none">
+					<p>Вы не сохранили изменения</p>
+					<button class="btn confirm-close" id="forceClose">
+						Всё равно закрыть
+					</button>
+					<button class="btn cancel-close" id="cancelClose">Отмена</button>
+				</div>
+			</div>
+		</div>
 	</body>
 </html>

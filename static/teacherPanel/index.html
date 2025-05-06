@@ -2,19 +2,26 @@
 <html lang="ru">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width,initial-scale=1" />
-		<title>Панель учителя — Set Learn</title>
-
-		<!-- 1. Сначала — инициализация темы -->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Панель учителя — Set Learn</title>
+		<!-- 1. Инициализация темы -->
 		<script src="/static/js/theme-init.js"></script>
-
-		<link rel="stylesheet" href="style.css" />
+		<!-- 2. Стили панели учителя -->
+		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
+		<!-- 3. Font Awesome -->
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+		/>
+		<!-- 4. Скрипт панели учителя -->
+		<script src="/static/teacherPanel/script.js" defer></script>
 	</head>
 	<body>
+		<!-- NAVBAR -->
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
-				<a href="/static/mainPage/">Главная</a>
+				<a href="/static/mainPage/index.html">Главная</a>
 				<a href="index.html" class="active">Панель учителя</a>
 				<a href="courses.html">Курсы</a>
 				<a href="tests.html">Тесты</a>
@@ -23,20 +30,18 @@
 			<div class="actions">
 				<button id="theme-toggle" aria-label="Переключить тему"></button>
 				<div class="user-icon" onclick="navigate('/profile')">
-					<img src="/static/img/userDefault.png" alt="User" />
+					<img src="/static/img/userDefault.png" alt="userDefault" />
 				</div>
 			</div>
 		</header>
 
 		<main class="page-content">
 			<h1>Панель учителя</h1>
-			<section class="tiles">
-				<a href="courses.html" class="card">Управление курсами</a>
-				<a href="tests.html" class="card">Управление тестами</a>
-				<a href="questions.html" class="card">Управление вопросами</a>
-			</section>
+			<div class="tiles">
+				<a class="card" href="courses.html">Управление курсами</a>
+				<a class="card" href="tests.html">Управление тестами</a>
+				<a class="card" href="questions.html">Управление вопросами</a>
+			</div>
 		</main>
-
-		<script src="script.js"></script>
 	</body>
 </html>

@@ -2,20 +2,21 @@
 <html lang="ru">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width,initial-scale=1" />
-		<title>Курсы — Панель учителя</title>
-
-		<!-- 1. Сначала — инициализация темы -->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Панель учителя — Курсы</title>
 		<script src="/static/js/theme-init.js"></script>
-
-		<link rel="stylesheet" href="style.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+		/>
+		<script src="/static/teacherPanel/script.js" defer></script>
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('index.html')">Set Learn</div>
 			<nav class="nav-links">
-				<a href="/static/mainPage/">Главная</a>
-				<a href="index.html">Панель учителя</a>
+				<a href="index.html">Главная</a>
 				<a href="courses.html" class="active">Курсы</a>
 				<a href="tests.html">Тесты</a>
 				<a href="questions.html">Вопросы</a>
@@ -23,33 +24,33 @@
 			<div class="actions">
 				<button id="theme-toggle" aria-label="Переключить тему"></button>
 				<div class="user-icon" onclick="navigate('/profile')">
-					<img src="/static/img/userDefault.png" alt="User" />
+					<img src="/static/img/userDefault.png" alt="userDefault" />
 				</div>
 			</div>
 		</header>
 
 		<main class="page-content">
 			<h1>Управление курсами</h1>
-			<form id="newTeacherCourseForm" class="course-form">
-				<input name="title" placeholder="Название курса" required />
-				<input name="description" placeholder="Описание курса" required />
-				<button type="submit"><i class="fas fa-plus"></i> Добавить</button>
-			</form>
+
 			<div class="table-wrapper">
 				<table id="teacherCoursesTable">
 					<thead>
 						<tr>
 							<th>Название</th>
 							<th>Описание</th>
-							<th>Дата создания</th>
+							<th>Дата создания</th>
 							<th>Действия</th>
 						</tr>
 					</thead>
 					<tbody id="teacherCoursesBody"></tbody>
 				</table>
 			</div>
-		</main>
 
-		<script src="script.js"></script>
+			<form id="newTeacherCourseForm" class="course-form">
+				<input name="title" placeholder="Название курса" required />
+				<input name="description" placeholder="Описание курса" required />
+				<button type="submit"><i class="fas fa-plus"></i> Добавить</button>
+			</form>
+		</main>
 	</body>
 </html>
