@@ -51,6 +51,29 @@ function updateToggleIcon(theme) {
 	// Добавляем изображение в кнопку
 	btn.appendChild(icon)
 }
+async function loadCourses() {
+	const container = document.querySelector('.courses-list')
+	try {
+		const res = await fetch('/api/courses', { credentials: 'same-origin' })
+		if (!res.ok) throw new Error(`Ошибка: ${res.status}`)
+		const courses = await res.json()
+
+		container.innerHTML = ''
+		courses.forEach(course => {
+			const card = document.createElement('div')
+			card.className = 'course-card'
+			card.innerHTML = `
+        <h2>${course.title}</h2>
+        <p>${course.description}</p>
+        <div class="info">Тестов: ${course.test_count}</div>
+        <button onclick="navigate('/static/coursePage/index.html?course=${course.id}')">Открыть</button>
+      `
+			container.appendChild(card)
+		})
+	} catch (err) {
+		container.innerHTML = `<p>Не удалось загрузить курсы: ${err.message}</p>`
+	}
+}
 
 document.addEventListener('DOMContentLoaded', () => {
 	/* -----------------------
@@ -105,5 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	})
 
-	// TODO: загрузка и отображение списка курсов
+	// загрузка курсов
+	loadCourses()
 })

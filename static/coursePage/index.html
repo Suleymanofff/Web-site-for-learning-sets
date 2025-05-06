@@ -3,22 +3,23 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Курсы — Set Learn</title>
+		<title>Курс — Set Learn</title>
 
-		<!-- 1. Инициализация темы -->
+		<!-- Инициализация темы -->
 		<script src="/static/js/theme-init.js"></script>
-
-		<!-- Общие стили и скрипт с поддержкой темы -->
+		<!-- Общие стили и скрипт темы -->
 		<link rel="stylesheet" href="style.css" />
+		<!-- Локальный скрипт курса -->
 		<script src="script.js" defer></script>
 	</head>
 	<body>
-		<!-- Навигационная панель -->
+		<!-- Navbar из общего шаблона -->
 		<header class="navbar">
 			<div class="logo">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
-				<a href="/static/courses/" class="active">Курсы</a>
+				<a href="/static/courses/">Курсы</a>
+				<a href="/static/coursePage/" class="active">курс</a>
 				<a href="/static/questions/">Тесты</a>
 				<a
 					href="/static/adminPanel/index.html"
@@ -38,10 +39,16 @@
 			</div>
 		</header>
 
-		<!-- Основной контент страницы Курсы -->
-		<main class="page-content">
-			<h1>Курсы</h1>
-			<div class="courses-list">Загрузка курсов...</div>
+		<main class="page-container">
+			<h1 id="course-title">Загрузка...</h1>
+			<section id="theory-section">
+				<h2>Теория</h2>
+				<div class="cards-list" id="theory-list">Загрузка теории...</div>
+			</section>
+			<section id="tests-section">
+				<h2>Тесты</h2>
+				<div class="cards-list" id="tests-list">Загрузка тестов...</div>
+			</section>
 		</main>
 	</body>
 </html>

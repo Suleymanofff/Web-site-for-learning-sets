@@ -132,6 +132,15 @@ func main() {
 		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherOptionsHandler)),
 	)
 
+	apiMux.Handle(
+		"/api/courses",
+		RequireAnyRole([]string{"admin", "teacher", "student"}, http.HandlerFunc(GetCourses)),
+	)
+
+	apiMux.Handle("/api/courses/", RequireAnyRole(
+		[]string{"admin", "teacher", "student"}, http.HandlerFunc(GetCourseByID),
+	))
+
 	// Оборачиваем API в JWT‑middleware
 	mux.Handle("/api/", JWTAuthMiddleware(apiMux))
 

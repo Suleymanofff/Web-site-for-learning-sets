@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -851,5 +853,152 @@ func teacherOptionsHandler(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func GetCourses(w http.ResponseWriter, r *http.Request) {
+	// Получаем список курсов
+	rows, err := db.Query("SELECT id, title, description FROM courses")
+	if err != nil {
+		log.Println("GetCourses query error:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	// Слайс результата
+	var courses []map[string]interface{}
+
+	for rows.Next() {
+		var id int
+		var title, description string
+		if err := rows.Scan(&id, &title, &description); err != nil {
+			log.Println("GetCourses scan error:", err)
+			continue
+		}
+
+		// Подсчёт числа тестов, связанных с этим курсом
+		var testCount int
+		if err := db.QueryRow(
+			"SELECT COUNT(*) FROM tests WHERE course_id = $1",
+			id,
+		).Scan(&testCount); err != nil {
+			log.Println("GetCourses testCount error:", err)
+			testCount = 0
+		}
+
+		// Формируем JSON-объект курса
+		course := map[string]interface{}{
+			"id":          id,
+			"title":       title,
+			"description": description,
+			"test_count":  testCount,
+		}
+		courses = append(courses, course)
+	}
+
+	// Возвращаем JSON
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(courses); err != nil {
+		log.Println("GetCourses encode error:", err)
+	}
+}
+
+// тестовый код
+func GetCourseByID(w http.ResponseWriter, r *http.Request) {
+	// log.Println("===> GetCourseByID called")
+
+	// ожидаем URL вида /api/courses/{id}
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/courses/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		log.Println("Invalid course ID:", idStr, err)
+		http.Error(w, "Invalid course ID", http.StatusBadRequest)
+		return
+	}
+	// log.Println("Parsed course ID:", id)
+
+	// 1. Основная информация о курсе
+	var course struct {
+		ID          int    `json:"id"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
+	}
+	err = db.QueryRow("SELECT id, title, description FROM courses WHERE id = $1", id).
+		Scan(&course.ID, &course.Title, &course.Description)
+	if err != nil {
+		log.Println("Course not found or DB error:", err)
+		http.Error(w, "Course not found", http.StatusNotFound)
+		return
+	}
+
+	// 2. Теория
+	rowsT, err := db.Query("SELECT id, title, summary, content FROM theory WHERE course_id = $1", id)
+	if err != nil {
+		log.Println("Error loading theory:", err)
+		http.Error(w, "Error loading theory", http.StatusInternalServerError)
+		return
+	}
+	defer rowsT.Close()
+
+	var theory []map[string]interface{}
+	for rowsT.Next() {
+		var tID int
+		var tTitle, tSum, tContent string
+		err = rowsT.Scan(&tID, &tTitle, &tSum, &tContent)
+		if err != nil {
+			http.Error(w, "Error reading theory row", http.StatusInternalServerError)
+			return
+		}
+		theory = append(theory, map[string]interface{}{
+			"id":      tID,
+			"title":   tTitle,
+			"summary": tSum,
+			"content": tContent, // можно опустить, если не нужен на этом этапе
+		})
+
+	}
+
+	// 3. Тесты
+	rowsQ, err := db.Query(`
+        SELECT t.id, t.title, COUNT(q.*)
+        FROM tests t
+        LEFT JOIN questions q ON q.test_id = t.id
+        WHERE t.course_id = $1
+        GROUP BY t.id, t.title`, id)
+	if err != nil {
+		log.Println("Error loading tests:", err)
+		http.Error(w, "Error loading tests", http.StatusInternalServerError)
+		return
+	}
+	defer rowsQ.Close()
+
+	var tests []map[string]interface{}
+	for rowsQ.Next() {
+		var testID, qCount int
+		var testTitle string
+		if err := rowsQ.Scan(&testID, &testTitle, &qCount); err != nil {
+			log.Println("Error scanning test row:", err)
+			continue
+		}
+		tests = append(tests, map[string]interface{}{
+			"id":             testID,
+			"title":          testTitle,
+			"question_count": qCount,
+		})
+	}
+
+	// Собираем всё в JSON
+	resp := map[string]interface{}{
+		"id":          course.ID,
+		"title":       course.Title,
+		"description": course.Description,
+		"theory":      theory,
+		"tests":       tests,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Println("JSON encoding error:", err)
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
 	}
 }
