@@ -1,96 +1,85 @@
-// Навигация для плиток
+// Сенарий: подгрузка одного раздела теории
+// Навигация и тема берём из глобальных утилит
 function navigate(url) {
 	window.location.href = url
 }
 
-/* -----------------------
-   2. Подгрузка аватарки в навбар
-   (возвращает распарсенный объект user)
------------------------- */
 async function loadUserIcon() {
 	try {
 		const res = await fetch('/api/profile', { credentials: 'same-origin' })
-		if (!res.ok) return null // не залогинен или ошибка
-
+		if (!res.ok) return
 		const user = await res.json()
-
 		if (user.avatar_path) {
-			const navImg = document.querySelector('.user-icon img')
-			if (navImg) navImg.src = user.avatar_path
+			document.querySelector('.user-icon img').src = user.avatar_path
 		}
-
-		return user
-	} catch (err) {
-		console.error('Error loading user icon:', err)
-		return null
-	}
+		if (user.role === 'admin')
+			document.getElementById('nav-admin').style.display = 'flex'
+		if (user.role === 'teacher')
+			document.getElementById('nav-teacher').style.display = 'inline-block'
+	} catch {}
 }
 
-// Обновление иконки темы
 function updateToggleIcon(theme) {
 	const btn = document.getElementById('theme-toggle')
 	if (!btn) return
-	btn.innerHTML = ''
-
-	const icon = document.createElement('img')
-	icon.alt = 'Toggle theme'
-	icon.src =
-		theme === 'dark'
-			? '/static/img/light-theme.png'
-			: '/static/img/dark-theme.png'
-
-	btn.appendChild(icon)
+	btn.innerHTML = `<img src="/static/img/${
+		theme === 'dark' ? 'light' : 'dark'
+	}-theme.png" alt="toggle"/>`
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-	// Подсветка активного пункта меню
-	const path = window.location.pathname
-	document.querySelectorAll('.nav-links a').forEach(link => {
-		link.classList.toggle('active', path.startsWith(link.getAttribute('href')))
-	})
-
-	// Инициализация темы
+function initTheme() {
 	const stored = localStorage.getItem('theme')
-	const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-	const theme = stored || (prefersDark ? 'dark' : 'light')
+	const prefers = window.matchMedia('(prefers-color-scheme: dark)').matches
+		? 'dark'
+		: 'light'
+	const theme = stored || prefers
 	document.documentElement.setAttribute('data-theme', theme)
 	updateToggleIcon(theme)
-
-	// Обработчик переключения темы
-	const toggleBtn = document.getElementById('theme-toggle')
-	if (toggleBtn) {
-		toggleBtn.addEventListener('click', () => {
-			const next =
-				document.documentElement.getAttribute('data-theme') === 'dark'
-					? 'light'
-					: 'dark'
-			document.documentElement.setAttribute('data-theme', next)
-			localStorage.setItem('theme', next)
-			updateToggleIcon(next)
-		})
-	}
-
-	// Кнопка перехода к тестам
-	const qBtn = document.getElementById('go-to-questions')
-	if (qBtn) {
-		qBtn.addEventListener('click', () => navigate('/static/questions/'))
-	}
-
-	// Скрытая плитка перехода в админ‑панель:
-	// сам элемент в HTML должен иметь id="go-to-admin" и стиль display:none по умолчанию.
-	loadUserIcon().then(user => {
-		if (!user) return
-		if (user.role === 'admin') {
-			const adminTile = document.getElementById('nav-admin')
-			if (adminTile) adminTile.style.display = 'flex'
-		}
-		if (user.role === 'teacher') {
-			// 1) в навигации
-			const navTeacher = document.getElementById('nav-teacher')
-			if (navTeacher) navTeacher.style.display = 'inline-block'
-			// 2) на главной странице-плитках
-			const teacherTile = document.getElementById('go-to-teacher')
-			if (teacherTile) teacherTile.style.display = 'flex'
-		}
+	document.getElementById('theme-toggle').addEventListener('click', () => {
+		const next =
+			document.documentElement.getAttribute('data-theme') === 'dark'
+				? 'light'
+				: 'dark'
+		document.documentElement.setAttribute('data-theme', next)
+		localStorage.setItem('theme', next)
+		updateToggleIcon(next)
 	})
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+	initTheme()
+	await loadUserIcon()
+
+	// Параметр ?topic=ID
+	const params = new URLSearchParams(location.search)
+	const id = params.get('topic')
+	if (!id) {
+		document.getElementById('content').textContent = 'Тема не указана.'
+		return
+	}
+
+	try {
+		const res = await fetch(`/api/theory/${id}/with-tests`, {
+			credentials: 'same-origin',
+		})
+		if (!res.ok) throw new Error()
+		const data = await res.json()
+
+		// Выводим теорию
+		document.getElementById('title').textContent = data.title
+		document.getElementById('content').innerHTML = data.content
+
+		// Проверяем наличие тестов
+		const qBtn = document.getElementById('go-to-questions')
+		if (data.tests && data.tests.length > 0) {
+			qBtn.style.display = 'inline-block'
+			qBtn.addEventListener('click', () => {
+				window.location.href = `/static/questions/?test=${data.tests[0].id}`
+			})
+		} else {
+			qBtn.style.display = 'none'
+		}
+	} catch (err) {
+		console.error(err)
+		document.getElementById('content').textContent = 'Ошибка загрузки теории.'
+	}
 })

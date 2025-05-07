@@ -1092,3 +1092,185 @@ func GetTests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tests)
 }
+
+// GET /api/theory/{id}
+func GetTheoryItem(w http.ResponseWriter, r *http.Request) {
+	// ожидаем путь вида /api/theory/123
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/theory/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	var item struct {
+		ID      int    `json:"id"`
+		Title   string `json:"title"`
+		Content string `json:"content"`
+	}
+	err = db.QueryRow(
+		"SELECT id, title, content FROM theory WHERE id = $1",
+		id,
+	).Scan(&item.ID, &item.Title, &item.Content)
+	if err != nil {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(item)
+}
+
+// GET /api/tests/{testID}/questions
+// GET /api/tests/{testID}/questions
+func GetTestQuestions(w http.ResponseWriter, r *http.Request) {
+	// 1) Парсим testID из URL "/api/tests/123/questions"
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/tests/"), "/")
+	if len(parts) != 2 || parts[1] != "questions" {
+		http.NotFound(w, r)
+		return
+	}
+	testID, err := strconv.Atoi(parts[0])
+	if err != nil {
+		http.Error(w, "Invalid testID", http.StatusBadRequest)
+		return
+	}
+
+	// 2) Запрашиваем все вопросы этого теста
+	rows, err := db.Query(`
+        SELECT id, test_id, question_text, question_type, multiple_choice, created_at
+        FROM questions
+        WHERE test_id = $1
+        ORDER BY id
+    `, testID)
+	if err != nil {
+		http.Error(w, "DB error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var questions []QuestionInfo
+
+	for rows.Next() {
+		var q QuestionInfo
+		// Заполняем поля, соответствующие QuestionInfo
+		if err := rows.Scan(
+			&q.ID,
+			&q.TestID,
+			&q.QuestionText,
+			&q.QuestionType,
+			&q.MultipleChoice,
+			&q.CreatedAt,
+		); err != nil {
+			// если вдруг одна строка упала — пропускаем её
+			log.Println("Scan question error:", err)
+			continue
+		}
+
+		// 3) Для закрытых вопросов подгружаем опции
+		if q.QuestionType == "closed" {
+			optRows, err := db.Query(`
+                SELECT id, question_id, option_text, is_correct, created_at
+                FROM options
+                WHERE question_id = $1
+                ORDER BY id
+            `, q.ID)
+			if err != nil {
+				log.Println("Options query error:", err)
+			} else {
+				for optRows.Next() {
+					var o OptionInfo
+					if err := optRows.Scan(
+						&o.ID,
+						&o.QuestionID,
+						&o.OptionText,
+						&o.IsCorrect,
+						&o.CreatedAt,
+					); err != nil {
+						log.Println("Scan option error:", err)
+						continue
+					}
+					q.Options = append(q.Options, o) // теперь тип совпадает
+				}
+				optRows.Close()
+			}
+		}
+
+		questions = append(questions, q)
+	}
+
+	// 4) Отдаём JSON
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(questions); err != nil {
+		log.Println("Encode questions error:", err)
+	}
+}
+
+func GetTheoryWithTests(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/theory/")
+	idStr = strings.TrimSuffix(idStr, "/with-tests")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid theory ID", http.StatusBadRequest)
+		return
+	}
+
+	// Загружаем саму теорию
+	var theory TheoryWithTests
+	err = db.QueryRow(`SELECT id, title, summary, content, course_id, created_at FROM theory WHERE id = $1`, id).
+		Scan(&theory.ID, &theory.Title, &theory.Summary, &theory.Content, &theory.CourseID, &theory.CreatedAt)
+	if err != nil {
+		http.Error(w, "Theory not found", http.StatusNotFound)
+		return
+	}
+
+	// Загружаем тесты по course_id
+	testsRows, err := db.Query(`SELECT id, title, description, created_at FROM tests WHERE course_id = $1`, theory.CourseID)
+	if err != nil {
+		http.Error(w, "Tests query failed", http.StatusInternalServerError)
+		return
+	}
+	defer testsRows.Close()
+
+	for testsRows.Next() {
+		var test Test
+		if err := testsRows.Scan(&test.ID, &test.Title, &test.Description, &test.CreatedAt); err != nil {
+			continue
+		}
+
+		// Загружаем вопросы для теста
+		qRows, err := db.Query(`SELECT id, question_text, question_type, multiple_choice, created_at FROM questions WHERE test_id = $1`, test.ID)
+		if err != nil {
+			continue
+		}
+
+		for qRows.Next() {
+			var question Question
+			if err := qRows.Scan(&question.ID, &question.Text, &question.Type, &question.MultipleChoice, &question.CreatedAt); err != nil {
+				continue
+			}
+
+			// Загружаем варианты для вопроса
+			oRows, err := db.Query(`SELECT id, option_text, is_correct, created_at FROM options WHERE question_id = $1`, question.ID)
+			if err != nil {
+				continue
+			}
+			for oRows.Next() {
+				var option Option
+				if err := oRows.Scan(&option.ID, &option.Text, &option.IsCorrect, &option.CreatedAt); err != nil {
+					continue
+				}
+				question.Options = append(question.Options, option)
+			}
+			oRows.Close()
+
+			test.Questions = append(test.Questions, question)
+		}
+		qRows.Close()
+
+		theory.Tests = append(theory.Tests, test)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(theory)
+}

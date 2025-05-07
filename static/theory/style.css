@@ -1,4 +1,5 @@
-/* RESET & VARIABLES */
+/* Скопировано и слегка адаптировано из вашего общего style.css */
+
 *,
 *::before,
 *::after {
@@ -10,16 +11,13 @@ html {
 	font-size: 16px;
 	scroll-behavior: smooth;
 }
-
 :root {
-	/* light theme */
 	--bg: #f9fafb;
 	--text: #1f2937;
-	--card-bg: #ffffff;
+	--card-bg: #fff;
 	--border: #e5e7eb;
 	--primary: #4f46e5;
 	--text-muted: #6b7280;
-	--sp-xs: 0.5rem;
 	--sp-sm: 1rem;
 	--sp-md: 1.5rem;
 	--sp-lg: 2rem;
@@ -37,25 +35,22 @@ html {
 
 body {
 	font-family: 'Inter', sans-serif;
-	line-height: 1.6;
 	background: var(--bg);
 	color: var(--text);
 	min-height: 100vh;
 	transition: background 0.5s ease, color 0.5s ease;
 }
 
-/* NAVBAR */
 .navbar {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	background: var(--card-bg);
-	padding: var(--sp-xs) var(--sp-md);
+	padding: var(--sp-sm) var(--sp-md);
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 	position: sticky;
 	top: 0;
 	z-index: 100;
-	transition: background 0.5s ease;
 }
 .logo {
 	font-size: 1.25rem;
@@ -94,74 +89,30 @@ body {
 #theme-toggle {
 	background: none;
 	border: none;
-	font-size: 1.25rem;
 	cursor: pointer;
 	margin-right: var(--sp-sm);
-	transition: transform 0.2s;
-}
-#theme-toggle:hover {
-	transform: scale(1.1);
 }
 .user-icon img {
 	width: 2rem;
 	height: 2rem;
 	border-radius: 50%;
-	object-fit: cover;
 	cursor: pointer;
-	transition: transform var(--trans);
-}
-.user-icon img:hover {
-	transform: scale(1.1);
 }
 
-/* PAGE CONTENT */
 .page-content {
 	max-width: 800px;
 	margin: var(--sp-lg) auto;
 	padding: 0 var(--sp-md);
+	text-align: left;
 }
-.page-content h1 {
+#title {
 	margin-bottom: var(--sp-md);
 	color: var(--primary);
-	transition: color 0.5s ease;
 }
-.page-content section {
+#content {
+	line-height: 1.6;
 	margin-bottom: var(--sp-lg);
 }
-.page-content h2 {
-	margin-bottom: var(--sp-sm);
-	color: var(--primary);
-	transition: color 0.5s ease;
-}
-.page-content h3 {
-	margin-top: var(--sp-md);
-	margin-bottom: var(--sp-xs);
-	color: var(--primary);
-}
-.page-content p,
-.page-content ul {
-	margin-bottom: var(--sp-sm);
-	transition: color 0.5s ease;
-}
-.page-content ul {
-	padding-left: var(--sp-md);
-	list-style-type: disc;
-}
-.code,
-code {
-	background: var(--border);
-	padding: 2px 4px;
-	border-radius: 4px;
-}
-.example {
-	background: rgba(224, 240, 255, 0.5);
-	border-left: 4px solid var(--primary);
-	padding: var(--sp-sm);
-	margin: var(--sp-sm) 0;
-	transition: background 0.5s ease;
-}
-
-/* BUTTON */
 #go-to-questions {
 	display: inline-block;
 	padding: var(--sp-sm) var(--sp-md);
@@ -170,28 +121,9 @@ code {
 	border: none;
 	border-radius: var(--radius);
 	cursor: pointer;
-	transition: background var(--trans), transform var(--trans),
-		box-shadow var(--trans);
+	transition: transform var(--trans), box-shadow var(--trans);
 }
 #go-to-questions:hover {
 	transform: translateY(-2px);
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-#go-to-questions:active {
-	transform: translateY(0);
-}
-
-/* RESPONSIVE */
-@media (max-width: 600px) {
-	.navbar {
-		flex-direction: column;
-		gap: var(--sp-xs);
-	}
-	.nav-links {
-		flex-wrap: wrap;
-		justify-content: center;
-	}
-	.page-content {
-		padding: var(--sp-md);
-	}
 }

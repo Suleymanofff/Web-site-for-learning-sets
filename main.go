@@ -60,6 +60,40 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
+type Option struct {
+	ID        int       `json:"id"`
+	Text      string    `json:"text"`
+	IsCorrect bool      `json:"is_correct"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type Question struct {
+	ID             int       `json:"id"`
+	Text           string    `json:"text"`
+	Type           string    `json:"type"`
+	MultipleChoice bool      `json:"multiple_choice"`
+	CreatedAt      time.Time `json:"created_at"`
+	Options        []Option  `json:"options"`
+}
+
+type Test struct {
+	ID          int        `json:"id"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	CreatedAt   time.Time  `json:"created_at"`
+	Questions   []Question `json:"questions"`
+}
+
+type TheoryWithTests struct {
+	ID        int       `json:"id"`
+	Title     string    `json:"title"`
+	Summary   string    `json:"summary"`
+	Content   string    `json:"content"`
+	CourseID  int       `json:"course_id"`
+	CreatedAt time.Time `json:"created_at"`
+	Tests     []Test    `json:"tests"`
+}
+
 func main() {
 	// Подключаемся к БД
 	psqlInfo := fmt.Sprintf(
@@ -172,12 +206,31 @@ func main() {
 		}),
 	))
 
+	// Получение вопросов теста — паттерн /api/tests/{testID}/questions
+	apiMux.Handle(
+		"/api/tests/",
+		RequireAnyRole([]string{"admin", "teacher", "student"}, http.HandlerFunc(GetTestQuestions)),
+	)
+
+	apiMux.Handle("/api/theory/", RequireAnyRole(
+		[]string{"admin", "teacher", "student"},
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			path := strings.TrimPrefix(r.URL.Path, "/api/theory/")
+			if strings.HasSuffix(path, "/with-tests") {
+				GetTheoryWithTests(w, r)
+			} else {
+				GetTheoryItem(w, r)
+			}
+		}),
+	))
+
 	// Оборачиваем API в JWT‑middleware
 	mux.Handle("/api/", JWTAuthMiddleware(apiMux))
 
 	// Старт сервера
 	fmt.Println("Server started on :8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(":8080", CORSMiddleware(mux)))
+
 }
 
 // uploadAvatarHandler — принимает multipart/form-data с полем "avatar"

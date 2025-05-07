@@ -3,13 +3,13 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Ассоциативное свойство множеств — Тест</title>
+		<title>Тест — Set Learn</title>
 
 		<!-- 1. Сначала — инициализация темы -->
 		<script src="/static/js/theme-init.js"></script>
-
-		<!-- Стили и скрипт для страницы с поддержкой темы -->
+		<!-- 2. Стили -->
 		<link rel="stylesheet" href="style.css" />
+		<!-- 3. Скрипт страницы -->
 		<script src="script.js" defer></script>
 	</head>
 	<body>
@@ -19,24 +19,19 @@
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
 				<a href="/static/courses/">Курсы</a>
-				<a href="/static/questions/" class="active">Тесты</a>
+				<a href="#" class="active">Тесты</a>
 				<a
 					href="/static/adminPanel/index.html"
 					id="nav-admin"
 					style="display: none"
+					>Панель админа</a
 				>
-					Панель админа
-				</a>
 				<a href="/static/teacherPanel/" id="nav-teacher" style="display: none"
 					>Панель учителя</a
 				>
 			</nav>
 			<div class="actions">
-				<!-- Переключатель темы -->
-				<button id="theme-toggle" aria-label="Переключить тему">
-					<img src="/static/img/dark-theme.png" alt="dark-theme-toggle" />
-				</button>
-				<!-- Иконка пользователя -->
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
 				<div class="user-icon" onclick="navigate('/profile')">
 					<img src="/static/img/userDefault.png" alt="userDefaultImg" />
 				</div>
@@ -45,168 +40,22 @@
 
 		<!-- Контент страницы -->
 		<div class="page-content">
-			<h1>Тест: Ассоциативное свойство множеств</h1>
+			<h1 id="test-title">Загрузка теста...</h1>
 			<form id="quiz">
-				<!-- Вопросы генерируются вручную -->
-				<div class="question">
-					<h4>1. Что такое множество?</h4>
-					<label><input type="radio" name="q1" value="0" /> Переменная</label>
-					<label
-						><input type="radio" name="q1" value="1" /> Последовательность
-						чисел</label
-					>
-					<label
-						><input type="radio" name="q1" value="2" /> Совокупность чётко
-						определённых объектов</label
-					>
-					<label
-						><input type="radio" name="q1" value="3" /> Результат
-						вычислений</label
-					>
-				</div>
-
-				<!-- Повторяем для всех вопросов -->
-				<div class="question">
-					<h4>2. Какая операция обозначается символом ∪?</h4>
-					<label><input type="radio" name="q2" value="0" /> Разность</label>
-					<label><input type="radio" name="q2" value="1" /> Пересечение</label>
-					<label><input type="radio" name="q2" value="2" /> Объединение</label>
-					<label
-						><input type="radio" name="q2" value="3" /> Упорядочивание</label
-					>
-				</div>
-				<div class="question">
-					<h4>3. Что такое пересечение двух множеств?</h4>
-					<label
-						><input type="radio" name="q3" value="0" /> Множество всех элементов
-						обоих множеств</label
-					>
-					<label
-						><input type="radio" name="q3" value="1" /> Множество только
-						элементов первого множества</label
-					>
-					<label
-						><input type="radio" name="q3" value="2" /> Множество общих
-						элементов</label
-					>
-					<label
-						><input type="radio" name="q3" value="3" /> Множество всех возможных
-						чисел</label
-					>
-				</div>
-
-				<div class="question">
-					<h4>4. Что делает операция A \ B?</h4>
-					<label
-						><input type="radio" name="q4" value="0" /> Оставляет только
-						элементы из B</label
-					>
-					<label
-						><input type="radio" name="q4" value="1" /> Удаляет из A элементы,
-						которые есть в B</label
-					>
-					<label
-						><input type="radio" name="q4" value="2" /> Складывает A и B</label
-					>
-					<label
-						><input type="radio" name="q4" value="3" /> Умножает A на B</label
-					>
-				</div>
-
-				<div class="question">
-					<h4>5. Как записывается ассоциативное свойство объединения?</h4>
-					<label><input type="radio" name="q5" value="0" /> A ∩ (B ∪ C)</label>
-					<label><input type="radio" name="q5" value="1" /> A ∪ B ∪ C</label>
-					<label
-						><input type="radio" name="q5" value="2" /> (A ∪ B) ∪ C = A ∪ (B ∪
-						C)</label
-					>
-					<label><input type="radio" name="q5" value="3" /> (A \ B) ∪ C</label>
-				</div>
-
-				<div class="question">
-					<h4>6. Как записывается ассоциативность пересечения?</h4>
-					<label
-						><input type="radio" name="q6" value="0" /> (A ∩ B) ∩ C = A ∩ (B ∩
-						C)</label
-					>
-					<label><input type="radio" name="q6" value="1" /> A ∩ B ∪ C</label>
-					<label><input type="radio" name="q6" value="2" /> (A ∪ B) ∩ C</label>
-					<label><input type="radio" name="q6" value="3" /> (A ∩ C) ∪ B</label>
-				</div>
-
-				<div class="question">
-					<h4>
-						7. Меняется ли результат при изменении порядка скобок в объединении?
-					</h4>
-					<label><input type="radio" name="q7" value="0" /> Да, всегда</label>
-					<label><input type="radio" name="q7" value="1" /> Нет, никогда</label>
-					<label
-						><input type="radio" name="q7" value="2" /> Меняется только для
-						чисел</label
-					>
-					<label
-						><input type="radio" name="q7" value="3" /> Меняется при
-						пересечении</label
-					>
-				</div>
-
-				<div class="question">
-					<h4>8. Для чего полезно ассоциативное свойство?</h4>
-					<label
-						><input type="radio" name="q8" value="0" /> Чтобы вычислить сумму
-						чисел</label
-					>
-					<label
-						><input type="radio" name="q8" value="1" /> Чтобы упростить операции
-						с множествами</label
-					>
-					<label
-						><input type="radio" name="q8" value="2" /> Чтобы найти минимальное
-						число</label
-					>
-					<label
-						><input type="radio" name="q8" value="3" /> Для сортировки
-						элементов</label
-					>
-				</div>
-
-				<div class="question">
-					<h4>
-						9. Если A = {1}, B = {1, 2}, C = {2, 3}, чему равно (A ∪ B) ∪ C?
-					</h4>
-					<label><input type="radio" name="q9" value="0" /> {1}</label>
-					<label><input type="radio" name="q9" value="1" /> {1, 2, 3}</label>
-					<label><input type="radio" name="q9" value="2" /> {2}</label>
-					<label><input type="radio" name="q9" value="3" /> {1, 2}</label>
-				</div>
-
-				<div class="question">
-					<h4>
-						10. Что включают в себя общие элементы множества A = {2, 3}, B = {3,
-						4}?
-					</h4>
-					<label><input type="radio" name="q10" value="0" /> {2, 3, 4}</label>
-					<label><input type="radio" name="q10" value="1" /> {2}</label>
-					<label><input type="radio" name="q10" value="2" /> {3}</label>
-					<label><input type="radio" name="q10" value="3" /> {4}</label>
-				</div>
-
-				<!-- ... остальные вопросы аналогично ... -->
-
-				<button type="button" id="check">Проверить</button>
+				<!-- Вопросы вставятся динамически -->
 			</form>
+			<button type="button" id="check">Проверить</button>
+		</div>
 
-			<!-- Popup результатов -->
-			<div class="popup-overlay" id="popupOverlay">
-				<div class="popup-content">
-					<span class="close-btn" onclick="closePopup()">&times;</span>
-					<div class="popup-body">
-						<h2>Результаты теста</h2>
-						<p id="popupResult"></p>
-						<div class="progress-bar">
-							<div class="progress" id="progressFill"></div>
-						</div>
+		<!-- Popup результатов -->
+		<div class="popup-overlay" id="popupOverlay">
+			<div class="popup-content">
+				<span class="close-btn" onclick="closePopup()">&times;</span>
+				<div class="popup-body">
+					<h2>Результаты теста</h2>
+					<p id="popupResult"></p>
+					<div class="progress-bar">
+						<div class="progress" id="progressFill"></div>
 					</div>
 				</div>
 			</div>

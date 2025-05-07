@@ -3,12 +3,14 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Теория: Ассоциативное свойство множеств — Set Learn</title>
+		<title>Теория — Set Learn</title>
 
 		<!-- 1. Сначала — инициализация темы -->
 		<script src="/static/js/theme-init.js"></script>
 
+		<!-- 2. Стили -->
 		<link rel="stylesheet" href="style.css" />
+		<!-- 3. Логика страницы -->
 		<script src="script.js" defer></script>
 	</head>
 	<body>
@@ -22,88 +24,27 @@
 					href="/static/adminPanel/index.html"
 					id="nav-admin"
 					style="display: none"
+					>Панель админа</a
 				>
-					Панель админа
-				</a>
 				<a href="/static/teacherPanel/" id="nav-teacher" style="display: none"
 					>Панель учителя</a
 				>
-				<a href="/static/theory/" class="active">Теория</a>
+				<a href="#" class="active">Теория</a>
 			</nav>
 			<div class="actions">
-				<button id="theme-toggle" aria-label="Переключить тему">
-					<img src="/static/img/dark-theme.png" alt="dark-theme-toggle" />
-				</button>
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
 				<div class="user-icon" onclick="navigate('/profile')">
-					<img src="/static/img/userDefault.png" alt="userDefaultImg" />
+					<img src="/static/img/userDefault.png" alt="avatar" />
 				</div>
 			</div>
 		</header>
 
 		<main class="page-content">
-			<h1>Теория: Ассоциативное свойство множеств</h1>
-
-			<section>
-				<h2>Что такое множество?</h2>
-				<p>
-					<strong>Множество</strong> — совокупность объектов, называемых
-					элементами множества. Например, A = {1, 2, 3}.
-				</p>
-			</section>
-
-			<section>
-				<h2>Операции над множествами</h2>
-				<ul>
-					<li>
-						<strong>Объединение (A ∪ B)</strong> — все элементы, принадлежащие A
-						или B.
-					</li>
-					<li>
-						<strong>Пересечение (A ∩ B)</strong> — элементы, принадлежащие
-						одновременно A и B.
-					</li>
-					<li>
-						<strong>Разность (A \ B)</strong> — элементы, принадлежащие A, но не
-						B.
-					</li>
-				</ul>
-			</section>
-
-			<section>
-				<h2>Ассоциативное свойство</h2>
-				<p>
-					Результат операции не зависит от порядка группировки, если операции
-					одинаковы.
-				</p>
-				<h3>Объединение</h3>
-				<p><code>(A ∪ B) ∪ C = A ∪ (B ∪ C)</code></p>
-				<div class="example">
-					<p><strong>Пример:</strong></p>
-					<p>A = {1,2}, B = {2,3}, C = {3,4}</p>
-					<p>(A ∪ B) ∪ C = {1,2,3,4}</p>
-					<p>A ∪ (B ∪ C) = {1,2,3,4}</p>
-				</div>
-
-				<h3>Пересечение</h3>
-				<p><code>(A ∩ B) ∩ C = A ∩ (B ∩ C)</code></p>
-				<div class="example">
-					<p><strong>Пример:</strong></p>
-					<p>A = {1,2,3}, B = {2,3,4}, C = {3,4,5}</p>
-					<p>(A ∩ B) ∩ C = {3}</p>
-					<p>A ∩ (B ∩ C) = {3}</p>
-				</div>
-			</section>
-
-			<section>
-				<h2>Зачем это важно?</h2>
-				<ul>
-					<li>Упрощает выражения и группировку операций.</li>
-					<li>Делает алгоритмы гибче.</li>
-					<li>Облегчает доказательства и вычисления.</li>
-				</ul>
-			</section>
-
-			<button type="button" id="go-to-questions">Перейти к тестам</button>
+			<h1 id="title">Загрузка...</h1>
+			<article id="content">
+				<!-- сюда подгрузится текст из БД -->
+			</article>
+			<button id="go-to-questions">Перейти к тестам</button>
 		</main>
 	</body>
 </html>
