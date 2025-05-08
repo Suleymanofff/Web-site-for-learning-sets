@@ -1227,16 +1227,17 @@ body {
 		<!-- поисковик -->
 		<div class="search-wrapper">
 			<input
-				type="text"
 				id="course-search"
-				placeholder="Поиск курса..."
-				autocomplete="off"
+				type="text"
+				placeholder="Поиск курса…"
+				aria-autocomplete="list"
+				aria-controls="suggestions"
 			/>
-			<ul id="suggestions" class="suggestions-list"></ul>
+			<ul id="suggestions" role="listbox"></ul>
 		</div>
 
 		<main class="page-content">
-			<h1>Курсы</h1>
+			<h1></h1>
 			<div class="courses-list">Загрузка курсов...</div>
 		</main>
 	</body>
@@ -1296,161 +1297,281 @@ function updateToggleIcon(theme) {
 	// Добавляем изображение в кнопку
 	btn.appendChild(icon)
 }
+
+/* -----------------------
+	Утилита поиска
+------------------------ */
+// function filterCourses(courses, query) {
+// 	const q = query.trim().toLowerCase()
+// 	if (!q) return []
+
+// 	return courses.filter(course => {
+// 		const title = course.title.toLowerCase()
+// 		const desc = (course.description || '').toLowerCase()
+// 		const tagsText = (course.tags || []).join(' ').toLowerCase()
+
+// 		return title.includes(q) || desc.includes(q) || tagsText.includes(q)
+// 	})
+// }
+
+function filterCourses(courses, query) {
+	const q = query.trim().toLowerCase()
+	if (!q) return []
+
+	// 1. Фразовое совпадение: заголовок === запрос
+	const exact = courses.filter(c => c.title.toLowerCase() === q)
+	if (exact.length) {
+		return exact
+	}
+
+	// 2. Фильтрация по includes (любая подстрока)
+	const bySubstring = courses.filter(
+		c =>
+			c.title.toLowerCase().includes(q) ||
+			(c.description || '').toLowerCase().includes(q) ||
+			(c.tags || []).join(' ').toLowerCase().includes(q)
+	)
+	if (bySubstring.length) {
+		return bySubstring
+	}
+
+	// 3. Нечёткий (fuzzy) поиск
+
+	function fuzzyMatch(text) {
+		let idx = 0
+		for (const ch of text) {
+			if (ch === q[idx]) {
+				idx++
+				if (idx === q.length) return true
+			}
+		}
+		return false
+	}
+	return courses.filter(
+		c =>
+			fuzzyMatch(c.title.toLowerCase()) ||
+			fuzzyMatch((c.description || '').toLowerCase())
+	)
+
+	// 4. Если ничего не нашло
+	return []
+}
+
+/* -----------------------
+   Утилита Debounce
+------------------------ */
+function debounce(fn, delay = 300) {
+	let timer
+	return function (...args) {
+		clearTimeout(timer)
+		timer = setTimeout(() => fn.apply(this, args), delay)
+	}
+}
+
+/* -----------------------
+   Загрузка и поиск курсов с сервером и ARIA
+------------------------ */
 async function loadCourses() {
 	const container = document.querySelector('.courses-list')
 	const searchInput = document.getElementById('course-search')
 	const suggestions = document.getElementById('suggestions')
-	const wrapper = container.parentNode
+	const wrapper = document.querySelector('.search-wrapper')
+	let currentIdx = -1
+	let expanded = false
+	const VISIBLE_COUNT = 4
+	let allCourses = []
+	let filteredCourses = []
 
-	try {
+	// Кнопка очистки
+	const clearBtn = document.createElement('button')
+	clearBtn.type = 'button'
+	clearBtn.className = 'clear-search'
+	clearBtn.textContent = '×'
+	searchInput.insertAdjacentElement('afterend', clearBtn)
+	clearBtn.addEventListener('click', () => {
+		searchInput.value = ''
+		suggestions.innerHTML = ''
+		wrapper.setAttribute('aria-expanded', 'false')
+		resetSearch()
+	})
+
+	// Отрисовка карточки
+	function renderCard(course) {
+		const card = document.createElement('div')
+		card.className = 'course-card'
+		card.innerHTML = `
+			<h2>${course.title}</h2>
+			<p>${course.description}</p>
+			<div class="info">Тестов: ${course.test_count}</div>
+			<button onclick="navigate('/static/coursePage/index.html?course=${course.id}')">Открыть</button>
+		`
+		container.appendChild(card)
+	}
+
+	// Отрисовка списка
+	function renderCourses() {
+		container.innerHTML = ''
+		const list = expanded
+			? filteredCourses
+			: filteredCourses.slice(0, VISIBLE_COUNT)
+		list.forEach(renderCard)
+
+		const btn = document.getElementById('toggle-courses')
+		if (filteredCourses.length > VISIBLE_COUNT) {
+			btn.style.display = 'block'
+			btn.textContent = expanded ? 'Свернуть' : 'Показать больше'
+		} else {
+			btn.style.display = 'none'
+		}
+	}
+
+	// Получение курсов с сервера (без поиска)
+	async function fetchCourses() {
 		const res = await fetch('/api/courses', { credentials: 'same-origin' })
-		if (!res.ok) throw new Error(`Ошибка: ${res.status}`)
-		const courses = await res.json()
+		if (!res.ok) throw new Error(`Ошибка ${res.status}`)
+		return await res.json()
+	}
 
-		let expanded = false
-		const VISIBLE_COUNT = 4
-		let filteredCourses = courses
+	// Сброс поиска
+	function resetSearch() {
+		filteredCourses = allCourses
+		expanded = false
+		renderCourses()
+	}
 
-		// Кнопка "Показать больше / Свернуть"
-		const btn = document.createElement('button')
-		btn.id = 'toggle-courses'
-		wrapper.appendChild(btn)
-		btn.addEventListener('click', () => {
-			expanded = !expanded
+	// Поиск по локальному массиву
+	function applySearch(text) {
+		const query = text.trim()
+		if (!query) {
+			resetSearch()
+			return
+		}
+
+		const results = filterCourses(allCourses, query)
+		if (results.length) {
+			filteredCourses = results
+			expanded = true
 			renderCourses()
+		} else {
+			container.innerHTML = '<p>К сожалению такого курса нет.</p>'
+			document.getElementById('toggle-courses').style.display = 'none'
+		}
+	}
+
+	// Подсказки
+	function updateSuggestions(text) {
+		suggestions.innerHTML = ''
+		if (!text) {
+			wrapper.setAttribute('aria-expanded', 'false')
+			return
+		}
+		const matches = filterCourses(allCourses, text).slice(0, 10)
+		matches.forEach((course, idx) => {
+			const li = document.createElement('li')
+			li.setAttribute('role', 'option')
+			li.id = `suggestion-${idx}`
+			const re = new RegExp(`(${text})`, 'i')
+			li.innerHTML = course.title.replace(re, '<mark>$1</mark>')
+			suggestions.appendChild(li)
 		})
+		currentIdx = -1
+		wrapper.setAttribute('aria-expanded', 'true')
+	}
 
-		// Функция рендера карточки
-		function renderCard(course) {
-			const card = document.createElement('div')
-			card.className = 'course-card'
-			card.innerHTML = `
-        <h2>${course.title}</h2>
-        <p>${course.description}</p>
-        <div class="info">Тестов: ${course.test_count}</div>
-        <button onclick="navigate('/static/coursePage/index.html?course=${course.id}')">Открыть</button>
-      `
-			container.appendChild(card)
-		}
-
-		// Рендер списка и кнопки
-		function renderCourses() {
-			container.innerHTML = ''
-			const list = expanded
-				? filteredCourses
-				: filteredCourses.slice(0, VISIBLE_COUNT)
-			list.forEach(renderCard)
-
-			if (filteredCourses.length > VISIBLE_COUNT) {
-				btn.style.display = 'block'
-				btn.textContent = expanded ? 'Свернуть' : 'Показать больше'
-			} else {
-				btn.style.display = 'none'
+	// Подсветка подсказки
+	function highlight(items) {
+		items.forEach((li, idx) => {
+			li.classList.toggle('active', idx === currentIdx)
+			li.setAttribute('aria-selected', idx === currentIdx)
+			if (idx === currentIdx) {
+				searchInput.setAttribute('aria-activedescendant', li.id)
 			}
-		}
+		})
+	}
 
-		// Сброс фильтрации при пустом вводе + Enter
-		function resetSearch() {
-			filteredCourses = courses
-			expanded = false
-			renderCourses()
-		}
+	// Debounce
+	const debouncedSuggest = debounce(text => updateSuggestions(text), 300)
 
-		// Применение поиска по точному совпадению
-		function applySearch(text) {
-			const match = courses.find(
-				c => c.title.toLowerCase() === text.toLowerCase()
-			)
-			if (match) {
-				filteredCourses = [match]
-				expanded = true
-				renderCourses()
-			} else {
-				container.innerHTML = `<p>К сожалению такого курса нет.</p>`
-				btn.style.display = 'none'
-			}
-		}
-
-		// Обновление списка подсказок (только те, что начинаются на введённый текст)
-		function updateSuggestions(text) {
+	// Обработчики клавиш
+	searchInput.addEventListener('keydown', e => {
+		const items = suggestions.querySelectorAll('li')
+		if (e.key === 'ArrowDown') {
+			e.preventDefault()
+			if (!items.length) return
+			currentIdx = Math.min(currentIdx + 1, items.length - 1)
+			highlight(items)
+		} else if (e.key === 'ArrowUp') {
+			e.preventDefault()
+			if (!items.length) return
+			currentIdx = Math.max(currentIdx - 1, 0)
+			highlight(items)
+		} else if (e.key === 'Escape') {
 			suggestions.innerHTML = ''
-			if (!text) return
-			const prefix = text.toLowerCase()
-			const matches = courses
-				.map(c => c.title)
-				.filter(title => title.toLowerCase().startsWith(prefix))
-			matches.forEach(title => {
-				const li = document.createElement('li')
-				li.textContent = title
-				suggestions.appendChild(li)
-			})
 			currentIdx = -1
-		}
-
-		// Навигация по подсказкам стрелками
-		let currentIdx = -1
-		searchInput.addEventListener('keydown', e => {
-			const items = suggestions.querySelectorAll('li')
-
-			if (e.key === 'ArrowDown') {
-				e.preventDefault()
-				if (items.length === 0) return
-				currentIdx = Math.min(currentIdx + 1, items.length - 1)
-				highlight(items)
-			} else if (e.key === 'ArrowUp') {
-				e.preventDefault()
-				if (items.length === 0) return
-				currentIdx = Math.max(currentIdx - 1, 0)
-				highlight(items)
-			} else if (e.key === 'Enter') {
-				e.preventDefault()
-				suggestions.innerHTML = ''
-
-				// 1) Если выделена подсказка — выбираем её
-				if (currentIdx >= 0 && items[currentIdx]) {
-					const selectedTitle = items[currentIdx].textContent
-					searchInput.value = selectedTitle
-					applySearch(selectedTitle)
-
-					// 2) Если поле пустое — сбрасываем
-				} else if (!searchInput.value.trim()) {
-					resetSearch()
-
-					// 3) Иначе — ищем по введённому тексту
-				} else {
-					applySearch(searchInput.value.trim())
-				}
-			}
-		})
-
-		function highlight(items) {
-			items.forEach((li, idx) => {
-				li.classList.toggle('active', idx === currentIdx)
-			})
-			if (currentIdx >= 0) {
-				items[currentIdx].scrollIntoView({ block: 'nearest' })
-			}
-		}
-
-		// Клик по подсказке мышью
-		suggestions.addEventListener('click', e => {
-			if (e.target.tagName === 'LI') {
-				const title = e.target.textContent
+			wrapper.setAttribute('aria-expanded', 'false')
+		} else if (e.key === 'Enter') {
+			e.preventDefault()
+			if (currentIdx >= 0 && items[currentIdx]) {
+				const title = items[currentIdx].textContent
 				searchInput.value = title
 				suggestions.innerHTML = ''
 				applySearch(title)
+			} else if (!searchInput.value.trim()) {
+				resetSearch()
+			} else {
+				applySearch(searchInput.value.trim())
 			}
-		})
+		}
+	})
 
-		// Автоподсказки при вводе
-		searchInput.addEventListener('input', () => {
-			updateSuggestions(searchInput.value.trim())
-		})
+	// Клик по подсказке
+	suggestions.addEventListener('click', e => {
+		if (e.target.tagName === 'LI') {
+			const title = e.target.textContent
+			searchInput.value = title
+			suggestions.innerHTML = ''
+			applySearch(title)
+		}
+	})
 
-		// Инициализация
-		resetSearch()
+	// По вводу
+	searchInput.addEventListener('input', e => {
+		const text = e.target.value.trim()
+		if (!text) {
+			suggestions.innerHTML = ''
+			wrapper.setAttribute('aria-expanded', 'false')
+			return
+		}
+		debouncedSuggest(text)
+	})
+
+	// Клики вне поля
+	document.addEventListener('click', e => {
+		if (!searchInput.contains(e.target) && !suggestions.contains(e.target)) {
+			suggestions.innerHTML = ''
+			currentIdx = -1
+			wrapper.setAttribute('aria-expanded', 'false')
+		}
+	})
+
+	// Кнопка "Показать больше"
+	const header = document.querySelector('.page-content h1')
+	const toggleBtn = document.createElement('button')
+	toggleBtn.id = 'toggle-courses'
+	toggleBtn.textContent = 'Показать больше'
+	toggleBtn.addEventListener('click', () => {
+		expanded = !expanded
+		renderCourses()
+	})
+	header.insertAdjacentElement('afterend', toggleBtn)
+
+	// Загружаем все курсы и стартуем
+	try {
+		allCourses = await fetchCourses()
+		filteredCourses = allCourses
+		renderCourses()
 	} catch (err) {
-		container.innerHTML = `<p>Не удалось загрузить курсы: ${err.message}</p>`
+		container.innerHTML = `<p>Ошибка загрузки: ${err.message}</p>`
 	}
 }
 
@@ -1763,7 +1884,7 @@ body {
 .search-wrapper {
 	position: relative;
 	max-width: 600px;
-	margin: 1rem auto;
+	margin: 0 auto;
 }
 
 /* поисковая строка */
@@ -1784,25 +1905,50 @@ body {
 	background: white;
 	border: 1px solid #ccc;
 	border-top: none;
-	list-style: none;
 	max-height: 200px;
 	overflow-y: auto;
 	z-index: 10;
+	list-style: none;
+	margin: 0;
+	padding: 0;
 }
 
 #suggestions li {
-	padding: 0.5rem 1rem;
+	padding: 8px 12px;
 	cursor: pointer;
 }
-
+#suggestions li.active,
 #suggestions li:hover {
-	background-color: #f0f0f0;
+	background-color: #f0f0ff;
 }
 
-/* Подсветка активной подсказки при навигации стрелками */
-.suggestions-list li.active {
-	background-color: var(--primary);
-	color: #fff;
+.clear-search {
+	position: absolute;
+	top: 50%;
+	right: 0.75em; /* совпадает с правым padding */
+	transform: translateY(-50%);
+	background: transparent;
+	border: none;
+	font-size: 1.2em;
+	cursor: pointer;
+	color: #666;
+}
+
+/* контейнер вокруг input должен быть position: relative */
+.search-wrapper {
+	position: relative;
+	max-width: 600px;
+	margin: 0 auto; /* по центру */
+}
+
+.search-wrapper input {
+	width: 100%;
+	padding: 0.5em 2.5em 0.5em 0.75em; /* справа место под крестик */
+	box-sizing: border-box;
+}
+
+.clear-search:hover {
+	color: #000;
 }
 
 Файл: C:\dev\projects\html\Курсовая работа\static\js\theme-init.js
@@ -2873,7 +3019,7 @@ button.ghost {
 				class="tile leaderboard-tile"
 				onclick="navigate('/static/leaderboard/')"
 			>
-				<h2>Лидерборд</h2>
+				<h2>Таблица лидеров</h2>
 			</div>
 			<!-- Плитка с теорией -->
 			<!-- <div class="tile theory-tile" onclick="navigate('/static/theory/')">
@@ -4234,8 +4380,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 		} else {
 			const ta = document.createElement('textarea')
 			ta.name = `q_${q.id}`
+			ta.classList.add('open-question-input')
 			wrapper.appendChild(ta)
 		}
+
 		form.appendChild(wrapper)
 	})
 
@@ -4508,6 +4656,29 @@ body {
 	background: var(--primary);
 	width: 0;
 	transition: width 0.3s ease;
+}
+
+/* Стили для поля открытого ответа в панели учителя */
+.open-question-input {
+	width: 100%;
+	max-width: 600px; /* ограничивает растяжение */
+	min-height: 60px; /* минимальная высота */
+	padding: var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	font-size: 1rem;
+	font-family: inherit;
+	resize: vertical; /* разрешает только вертикальное растяжение */
+	background: var(--bg);
+	color: var(--text);
+	box-sizing: border-box; /* учитывает padding/border в width */
+	transition: border-color var(--trans), background var(--trans),
+		color var(--trans);
+}
+
+/* Если нужно, можно ограничить максимальную высоту */
+.open-question-input {
+	max-height: 200px;
 }
 
 /* RESPONSIVE */
@@ -4850,6 +5021,7 @@ body {
 		<header class="navbar">
 			<div class="logo" onclick="navigate('index.html')">Set Learn</div>
 			<nav class="nav-links">
+				<a href="/static/mainPage/index.html">Главная</a>
 				<a href="index.html">Панель учителя</a>
 				<a href="courses.html" class="active">Курсы</a>
 				<a href="tests.html">Тесты</a>
@@ -4955,8 +5127,9 @@ body {
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo" onclick="navigate('index.html')">Set Learn</div>
+			<div class="logo" onclick="navigate('index.html')">Set Learn</div>
 			<nav class="nav-links">
+				<a href="/static/mainPage/index.html">Главная</a>
 				<a href="index.html">Панель учителя</a>
 				<a href="courses.html">Курсы</a>
 				<a href="tests.html">Тесты</a>
@@ -4986,14 +5159,13 @@ body {
 
 				<select name="question_type" id="newQuestionType">
 					<option value="open">Открытый</option>
-					<option value="closed">Закрытый</option>
+					<option value="closed" selected>Закрытый</option>
 				</select>
-				<label>
+				<label id="multiAnswerLabel" class="multi-answer-label">
 					<input type="checkbox" name="multiple_choice" />
 					Несколько ответов
 				</label>
 
-				<!-- Новое поле: скрыто по умолчанию, видно при выборе "Открытый" -->
 				<input
 					type="text"
 					name="correct_answer_text"
@@ -5012,72 +5184,14 @@ body {
 							<th>Вопрос</th>
 							<th>Тип</th>
 							<th>Несколько</th>
-							<th>Тест ID</th>
-							<th>Дата создания</th>
+							<th>Тест ID</th>
+							<th>Дата создания</th>
 							<th>Ответ / Варианты</th>
 							<th>Действия</th>
 						</tr>
 					</thead>
 					<tbody id="questionsBody">
-						<!-- Пример строки вопроса -->
-						<tr>
-							<td>
-								<input class="edit-text" data-id="1" value="Пример вопроса" />
-							</td>
-							<td>
-								<select class="edit-type" data-id="1">
-									<option value="open">Открытый</option>
-									<option value="closed">Закрытый</option>
-								</select>
-							</td>
-							<td><input type="checkbox" class="edit-multi" data-id="1" /></td>
-							<td>1</td>
-							<td>01.01.2023</td>
-							<td>
-								<button class="manage-options" data-id="1">
-									<i class="fas fa-list"></i> Варианты
-								</button>
-							</td>
-							<td>
-								<button class="save-question" data-id="1">
-									<i class="fas fa-save"></i> Сохранить
-								</button>
-								<button class="del-question" data-id="1">
-									<i class="fas fa-trash"></i> Удалить
-								</button>
-							</td>
-						</tr>
-
-						<!-- Строка для отображения вариантов (по умолчанию скрыта) -->
-						<tr class="options-row" data-qid="1" style="display: none">
-							<td colspan="7">
-								<div class="options-wrapper">
-									<table class="options-table">
-										<thead>
-											<tr>
-												<th>Вариант</th>
-												<th>Правильный?</th>
-												<th>Действия</th>
-											</tr>
-										</thead>
-										<tbody id="opts-1"></tbody>
-									</table>
-
-									<!-- Форма для добавления нового варианта -->
-									<div class="option-form">
-										<input
-											type="text"
-											class="new-opt-text"
-											placeholder="Новый вариант"
-										/>
-										<input type="checkbox" class="new-opt-correct" />
-										<button class="save-new-option" data-id="1">
-											<i class="fas fa-plus"></i> Добавить
-										</button>
-									</div>
-								</div>
-							</td>
-						</tr>
+						<!-- Здесь JS динамически создаёт строки вопросов и их варианты -->
 					</tbody>
 				</table>
 			</div>
@@ -5129,9 +5243,7 @@ function updateToggleIcon(theme) {
 let quickIsDirty = false
 
 function openQuestionModal(testId) {
-	// проставляем в скрытое поле id теста
 	document.getElementById('quickTestId').value = testId
-	// показываем модалку
 	document.getElementById('questionModal').style.display = 'flex'
 	quickIsDirty = false
 	document.getElementById('saveQuickQuestions').disabled = true
@@ -5154,7 +5266,6 @@ function forceCloseModal() {
 	document.getElementById('questionModal').style.display = 'none'
 	document.getElementById('unsavedConfirm').style.display = 'none'
 	clearQuickModal()
-	// Перезагружаем страницу, чтобы обновить список тестов:
 	location.reload()
 }
 
@@ -5166,7 +5277,6 @@ async function saveQuickQuestions() {
 	const testId = +document.getElementById('quickTestId').value
 	const items = document.querySelectorAll('#quickQuestionsList .question-item')
 	for (let li of items) {
-		// 1) создаём вопрос
 		const qRes = await fetch('/api/teacher/questions', {
 			method: 'POST',
 			credentials: 'include',
@@ -5181,7 +5291,6 @@ async function saveQuickQuestions() {
 		if (!qRes.ok) throw new Error('Не удалось сохранить вопрос')
 		const { id: realQid } = await qRes.json()
 
-		// 2) создаём варианты
 		for (let opt of li.querySelectorAll('.options-list .option-item')) {
 			await fetch('/api/teacher/options', {
 				method: 'POST',
@@ -5201,45 +5310,192 @@ async function saveQuickQuestions() {
 }
 
 // -----------------------
+// loadOptions
+// -----------------------
+async function loadOptions(questionId) {
+	const tbodyOpts = document.getElementById(`opts-${questionId}`)
+	if (!tbodyOpts) return
+	tbodyOpts.innerHTML = ''
+	try {
+		const res = await fetch(`/api/teacher/options?question_id=${questionId}`, {
+			credentials: 'include',
+		})
+		if (!res.ok) throw ''
+		const opts = await res.json()
+		opts.forEach(o => {
+			const tr = document.createElement('tr')
+			tr.innerHTML = `
+        <td><input class="edit-opt-text" data-id="${o.id}" value="${
+				o.option_text
+			}"></td>
+        <td><input type="checkbox" class="edit-opt-correct" data-id="${o.id}"${
+				o.is_correct ? ' checked' : ''
+			}></td>
+        <td>
+          <button class="save-option" data-id="${
+						o.id
+					}"><i class="fas fa-save"></i></button>
+          <button class="del-option" data-id="${
+						o.id
+					}"><i class="fas fa-trash"></i></button>
+        </td>`
+			tbodyOpts.appendChild(tr)
+		})
+	} catch {
+		console.error('Ошибка загрузки вариантов')
+	}
+}
+
+async function loadQuestions(testId) {
+	const tbody = document.getElementById('questionsBody')
+	tbody.innerHTML = ''
+	if (!testId) return
+	try {
+		const res = await fetch(`/api/teacher/questions?test_id=${testId}`, {
+			credentials: 'include',
+		})
+		if (!res.ok) throw ''
+		const qs = await res.json()
+		qs.forEach(q => {
+			// Основная строка
+			const tr = document.createElement('tr')
+			tr.innerHTML = `
+        <td><input class="edit-text" data-id="${q.id}" value="${
+				q.question_text
+			}"></td>
+        <td>
+          <select class="edit-type" data-id="${q.id}">
+            <option value="open"${
+							q.question_type === 'open' ? ' selected' : ''
+						}>Открытый</option>
+            <option value="closed"${
+							q.question_type === 'closed' ? ' selected' : ''
+						}>Закрытый</option>
+          </select>
+        </td>
+        <td>
+  <input type="checkbox" class="edit-multi ${
+		q.question_type === 'open' ? 'checkbox-disabled' : ''
+	}" 
+         data-id="${q.id}" 
+         ${q.multiple_choice ? 'checked' : ''} 
+         ${q.question_type === 'open' ? 'disabled' : ''}>
+</td>
+
+        <td>${q.test_id}</td>
+        <td>${new Date(q.created_at).toLocaleDateString()}</td>
+        <td>
+          <button class="manage-options"
+                  data-id="${q.id}"
+                  data-type="${q.question_type}">
+            <i class="fas fa-list"></i> Варианты
+          </button>
+        </td>
+        <td>
+          <button class="save-question" data-id="${
+						q.id
+					}"><i class="fas fa-save"></i> Сохранить</button>
+          <button class="del-question"  data-id="${
+						q.id
+					}"><i class="fas fa-trash"></i> Удалить</button>
+        </td>`
+			tbody.appendChild(tr)
+
+			// Скрытая строка
+			const trOpts = document.createElement('tr')
+			trOpts.className = 'options-row'
+			trOpts.dataset.qid = q.id
+			trOpts.dataset.type = q.question_type
+			trOpts.style.display = 'none'
+
+			if (q.question_type === 'closed') {
+				trOpts.innerHTML = `
+          <td colspan="7">
+            <div class="options-wrapper" style="min-height:100px; padding:10px;">
+              <table class="options-table">
+                <thead><tr><th>Вариант</th><th>Правильный?</th><th>Действия</th></tr></thead>
+                <tbody id="opts-${q.id}"></tbody>
+              </table>
+              <div class="option-form">
+                <input type="text" class="new-opt-text" placeholder="Новый вариант">
+                <input type="checkbox" class="new-opt-correct">
+                <button class="save-new-option" data-id="${q.id}"><i class="fas fa-plus"></i></button>
+              </div>
+            </div>
+          </td>`
+			} else {
+				trOpts.innerHTML = `
+          <td colspan="7">
+      <div class="options-wrapper">
+        <div class="open-answer-wrapper">
+          <label>Правильный ответ:</label>
+          <input type="text" class="open-answer-input" value="${
+						q.correct_answer_text || ''
+					}" />
+              <button class="save-open-answer" data-id="${
+								q.id
+							}">Сохранить</button>
+              <button class="delete-open-answer" data-id="${
+								q.id
+							}">Удалить</button>
+            </div>
+          </td>`
+			}
+			tbody.appendChild(trOpts)
+		})
+	} catch {
+		console.error('Ошибка загрузки вопросов')
+	}
+}
+
+// -----------------------
 // initQuestions
 // -----------------------
-async function initQuestions() {
+function initQuestions() {
 	const select = document.getElementById('testSelect')
-	const tbody = document.getElementById('questionsBody')
 
-	// загрузить тесты
-	try {
-		const res = await fetch('/api/teacher/tests', { credentials: 'include' })
-		if (!res.ok) throw ''
-		const ts = await res.json()
-		ts.forEach(t => {
-			const o = document.createElement('option')
-			o.value = t.id
-			o.textContent = t.title
-			select.appendChild(o)
+	// 1) Загрузка списка тестов
+	fetch('/api/teacher/tests', { credentials: 'include' })
+		.then(r => (r.ok ? r.json() : Promise.reject()))
+		.then(ts => {
+			ts.forEach(t => {
+				const o = document.createElement('option')
+				o.value = t.id
+				o.textContent = t.title
+				select.appendChild(o)
+			})
+			if (ts.length) {
+				select.value = ts[0].id
+				loadQuestions(ts[0].id)
+			}
 		})
-		if (ts.length) {
-			select.value = ts[0].id
-			loadQuestions(ts[0].id)
-		}
-	} catch {
-		console.error('Не удалось загрузить тесты')
-	}
+		.catch(err => console.error('Не удалось загрузить тесты', err))
 
-	// переключение теста
-	select.addEventListener('change', () => loadQuestions(select.value))
+	// 2) При смене выбранного теста — перезагружаем вопросы
+	select.addEventListener('change', () => {
+		loadQuestions(select.value)
+	})
 
-	// логика формы добавления вопроса
+	// 3) Форма добавления нового вопроса
 	const form = document.getElementById('newQuestionForm')
 	const typeSelect = document.getElementById('newQuestionType')
 	const answerInput = document.getElementById('newAnswerInput')
 	const multiCheckboxNew = form.querySelector("input[name='multiple_choice']")
+	const multiLabel = document.getElementById('multiAnswerLabel')
 
 	typeSelect.addEventListener('change', () => {
 		const isOpen = typeSelect.value === 'open'
 		answerInput.style.display = isOpen ? 'block' : 'none'
 		multiCheckboxNew.checked = false
 		multiCheckboxNew.disabled = isOpen
+
+		if (isOpen) {
+			multiCheckboxNew.classList.add('checkbox-disabled')
+			multiLabel.classList.add('checkbox-disabled')
+		} else {
+			multiCheckboxNew.classList.remove('checkbox-disabled')
+			multiLabel.classList.remove('checkbox-disabled')
+		}
 	})
 
 	form.addEventListener('submit', async e => {
@@ -5268,149 +5524,253 @@ async function initQuestions() {
 		}
 	})
 
-	// обработчик смены типа внутри таблицы
+	// 4) Изменение типа вопроса прямо в таблице вопросов
+	const tbody = document.getElementById('questionsBody')
 	tbody.addEventListener('change', e => {
 		if (!e.target.matches('.edit-type')) return
 		const sel = e.target
 		const id = sel.dataset.id
 		const row = sel.closest('tr')
 		const multiInput = row.querySelector(`.edit-multi[data-id="${id}"]`)
-		const ansInput = row.querySelector(`.edit-answer[data-id="${id}"]`)
 		const optsBtn = row.querySelector(`.manage-options[data-id="${id}"]`)
+
 		if (sel.value === 'open') {
 			multiInput.checked = false
 			multiInput.disabled = true
-			ansInput.style.display = 'block'
+			multiInput.classList.add('checkbox-disabled')
 			optsBtn.style.display = 'none'
 		} else {
 			multiInput.disabled = false
-			ansInput.style.display = 'none'
+			multiInput.classList.remove('checkbox-disabled')
 			optsBtn.style.display = 'inline-block'
 		}
 	})
-}
 
-document.getElementById('questionsBody').addEventListener('click', async e => {
-	const btn = e.target.closest('.manage-options')
-	if (!btn) return
+	// 5) Делегированный обработчик кликов по таблице вопросов
+	tbody.addEventListener('click', async e => {
+		// a) Переключение панели вариантов/ответа
+		if (e.target.closest('.manage-options')) {
+			const btn = e.target.closest('.manage-options')
+			const qid = btn.dataset.id
+			const row = document.querySelector(`.options-row[data-qid="${qid}"]`)
+			const isHidden = getComputedStyle(row).display === 'none'
+			if (isHidden) {
+				if (btn.dataset.type === 'closed') {
+					await loadOptions(qid)
+				}
+				row.style.display = 'table-row'
+			} else {
+				row.style.display = 'none'
+			}
+			return
+		}
 
-	const questionId = btn.dataset.id
-	const row = document.querySelector(`.options-row[data-qid="${questionId}"]`)
+		// b) Сохранение открытого ответа
+		if (e.target.matches('.save-open-answer')) {
+			console.log('Клик на .save-open-answer', e.target)
 
-	if (row.style.display === 'none' || !row.style.display) {
-		await loadOptions(questionId)
-		row.style.display = ''
-	} else {
-		row.style.display = 'none'
-	}
-})
+			const qid = e.target.dataset.id
+			const row = document.querySelector(`.options-row[data-qid="${qid}"]`)
+			const answer = row.querySelector('.open-answer-input').value.trim()
+			try {
+				const res = await fetch('/api/teacher/questions/set_open_answer', {
+					method: 'POST',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id: +qid, answer }),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				alert('Ответ сохранён')
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось сохранить ответ')
+			}
+			return
+		}
 
-// -----------------------
-// loadQuestions
-// -----------------------
-async function loadQuestions(testId) {
-	const tbody = document.getElementById('questionsBody')
-	tbody.innerHTML = ''
-	if (!testId) return
-	try {
-		const res = await fetch(`/api/teacher/questions?test_id=${testId}`, {
-			credentials: 'include',
-		})
-		if (!res.ok) throw ''
-		const qs = await res.json()
-		qs.forEach(q => {
-			const tr = document.createElement('tr')
-			tr.innerHTML = `
-                <td><input class="edit-text" data-id="${q.id}" value="${
-				q.question_text
-			}"></td>
-                <td>
-                    <select class="edit-type" data-id="${q.id}">
-                        <option value="open"${
-													q.question_type === 'open' ? ' selected' : ''
-												}>Открытый</option>
-                        <option value="closed"${
-													q.question_type === 'closed' ? ' selected' : ''
-												}>Закрытый</option>
-                    </select>
-                </td>
-                <td><input type="checkbox" class="edit-multi" data-id="${
-									q.id
-								}"${q.multiple_choice ? ' checked' : ''}></td>
-                <td>${q.test_id}</td>
-                <td>${new Date(q.created_at).toLocaleDateString()}</td>
-                <td><button class="manage-options" data-id="${
-									q.id
-								}"><i class="fas fa-list"></i> Варианты</button></td>
-                <td>
-                    <button class="save-question" data-id="${
-											q.id
-										}"><i class="fas fa-save"></i> Сохранить</button>
-                    <button class="del-question" data-id="${
-											q.id
-										}"><i class="fas fa-trash"></i> Удалить</button>
-                </td>`
-			tbody.appendChild(tr)
+		// c) Удаление открытого ответа
+		if (e.target.matches('.delete-open-answer')) {
+			const qid = e.target.dataset.id
+			if (!confirm('Удалить ответ?')) return
+			try {
+				const res = await fetch('/api/teacher/questions/set_open_answer', {
+					method: 'POST',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id: +qid, answer: '' }),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				const row = document.querySelector(`.options-row[data-qid="${qid}"]`)
+				row.querySelector('.open-answer-input').value = ''
+				alert('Ответ удалён')
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось удалить ответ')
+			}
+			return
+		}
 
-			const trOpts = document.createElement('tr')
-			trOpts.classList.add('options-row')
-			trOpts.dataset.qid = q.id
-			trOpts.style.display = 'none'
-			trOpts.innerHTML = `
-                <td colspan="7">
-                    <div class="options-wrapper">
-                        <table class="options-table">
-                            <thead><tr><th>Вариант</th><th>Правильный?</th><th>Действия</th></tr></thead>
-                            <tbody id="opts-${q.id}"></tbody>
-                        </table>
-                        <div class="option-form">
-                            <input type="text" class="new-opt-text" placeholder="Новый вариант">
-                            <input type="checkbox" class="new-opt-correct">
-                            <button class="save-new-option" data-id="${q.id}"><i class="fas fa-plus"></i></button>
-                        </div>
-                    </div>
-                </td>`
-			tbody.appendChild(trOpts)
-		})
-	} catch {
-		console.error('Ошибка загрузки вопросов')
-	}
-}
+		// d) Другие кнопки: save-question, del-question, save-new-option, save-option, del-option
+		// Сохранить отредактированный вопрос
+		if (e.target.matches('.save-question')) {
+			const qid = e.target.dataset.id
+			const row = e.target.closest('tr')
+			const text = row
+				.querySelector(`.edit-text[data-id="${qid}"]`)
+				.value.trim()
+			const type = row.querySelector(`.edit-type[data-id="${qid}"]`).value
+			const multi = row.querySelector(`.edit-multi[data-id="${qid}"]`).checked
+			const payload = {
+				id: +qid,
+				question_text: text,
+				question_type: type,
+				multiple_choice: multi,
+			}
 
-// -----------------------
-// loadOptions
-// -----------------------
-async function loadOptions(questionId) {
-	const tbodyOpts = document.getElementById(`opts-${questionId}`)
-	tbodyOpts.innerHTML = ''
-	try {
-		const res = await fetch(`/api/teacher/options?question_id=${questionId}`, {
-			credentials: 'include',
-		})
-		if (!res.ok) throw ''
-		const opts = await res.json()
-		opts.forEach(o => {
-			const tr = document.createElement('tr')
-			tr.innerHTML = `
-                <td><input class="edit-opt-text" data-id="${o.id}" value="${
-				o.option_text
-			}"></td>
-                <td><input type="checkbox" class="edit-opt-correct" data-id="${
-									o.id
-								}"${o.is_correct ? ' checked' : ''}></td>
-                <td>
-                    <button class="save-option" data-id="${
-											o.id
-										}"><i class="fas fa-save"></i></button>
-                    <button class="del-option" data-id="${
-											o.id
-										}"><i class="fas fa-trash"></i></button>
-                </td>`
-			tbodyOpts.appendChild(tr)
-		})
-	} catch {
-		console.error('Ошибка загрузки вариантов')
-	}
+			// Если тип вопроса — открытый, добавим правильный ответ
+			if (type === 'open') {
+				const optionsRow = document.querySelector(
+					`.options-row[data-qid="${qid}"]`
+				)
+				if (optionsRow) {
+					const input = optionsRow.querySelector('.open-answer-input')
+					if (input) {
+						payload.correct_answer_text = input.value.trim()
+					}
+				}
+			}
+			try {
+				const res = await fetch('/api/teacher/questions', {
+					method: 'PUT',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(payload),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				alert('Вопрос сохранён')
+				loadQuestions(select.value)
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось сохранить вопрос')
+			}
+			return
+		}
+
+		// Удалить вопрос
+		if (e.target.matches('.del-question')) {
+			const qid = e.target.dataset.id
+			if (!confirm('Удалить вопрос?')) return
+			try {
+				const res = await fetch('/api/teacher/questions', {
+					method: 'DELETE',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id: +qid }),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				alert('Вопрос удалён')
+				loadQuestions(select.value)
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось удалить вопрос')
+			}
+			return
+		}
+
+		// Создать новый вариант ответа для закрытого вопроса
+		if (e.target.matches('.save-new-option')) {
+			const qid = e.target.dataset.id
+			const wrapper = document.querySelector(
+				`.options-wrapper tbody#opts-${qid}`
+			)
+			const textEl = wrapper.parentElement.querySelector('.new-opt-text')
+			const correctEl = wrapper.parentElement.querySelector('.new-opt-correct')
+			const optionText = textEl.value.trim()
+			const isCorrect = correctEl.checked
+			if (!optionText) {
+				alert('Введите текст варианта')
+				return
+			}
+			try {
+				const res = await fetch('/api/teacher/options', {
+					method: 'POST',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						question_id: +qid,
+						option_text: optionText,
+						is_correct: isCorrect,
+					}),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				textEl.value = ''
+				correctEl.checked = false
+				await loadOptions(qid)
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось добавить вариант')
+			}
+			return
+		}
+
+		// Сохранить существующий вариант ответа
+		if (e.target.matches('.save-option')) {
+			const oid = e.target.dataset.id
+			const rowOpt = e.target.closest('tr')
+			const optionText = rowOpt
+				.querySelector(`.edit-opt-text[data-id="${oid}"]`)
+				.value.trim()
+			const isCorrect = rowOpt.querySelector(
+				`.edit-opt-correct[data-id="${oid}"]`
+			).checked
+			// определим qid по id tbody
+			const tbodyOpts = rowOpt.closest('tbody')
+			const qid = tbodyOpts.id.split('-')[1]
+			try {
+				const res = await fetch('/api/teacher/options', {
+					method: 'PUT',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						id: +oid,
+						option_text: optionText,
+						is_correct: isCorrect,
+					}),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				alert('Вариант сохранён')
+				await loadOptions(qid)
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось сохранить вариант')
+			}
+			return
+		}
+
+		// Удалить существующий вариант ответа
+		if (e.target.matches('.del-option')) {
+			const oid = e.target.dataset.id
+			const rowOpt = e.target.closest('tr')
+			const tbodyOpts = rowOpt.closest('tbody')
+			const qid = tbodyOpts.id.split('-')[1]
+			if (!confirm('Удалить вариант?')) return
+			try {
+				const res = await fetch('/api/teacher/options', {
+					method: 'DELETE',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id: +oid }),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				alert('Вариант удалён')
+				await loadOptions(qid)
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось удалить вариант')
+			}
+			return
+		}
+	})
 }
 
 // -----------------------
@@ -5424,21 +5784,21 @@ function initCourses() {
 			courses.forEach(c => {
 				const tr = document.createElement('tr')
 				tr.innerHTML = `
-                    <td><input class="edit-text" data-id="${c.id}" value="${
+          <td><input class="edit-text" data-id="${c.id}" value="${
 					c.title
 				}"></td>
-                    <td><input class="edit-text" data-id="${c.id}" value="${
+          <td><input class="edit-text" data-id="${c.id}" value="${
 					c.description
 				}"></td>
-                    <td>${new Date(c.created_at).toLocaleDateString()}</td>
-                    <td>
-                        <button class="save-course" data-id="${
-													c.id
-												}"><i class="fas fa-save"></i> Сохранить</button>
-                        <button class="del-course" data-id="${
-													c.id
-												}"><i class="fas fa-trash"></i> Удалить</button>
-                    </td>`
+          <td>${new Date(c.created_at).toLocaleDateString()}</td>
+          <td>
+            <button class="save-course" data-id="${
+							c.id
+						}"><i class="fas fa-save"></i> Сохранить</button>
+            <button class="del-course" data-id="${
+							c.id
+						}"><i class="fas fa-trash"></i> Удалить</button>
+          </td>`
 				tbody.appendChild(tr)
 			})
 		})
@@ -5450,9 +5810,9 @@ function initCourses() {
 		const id = +btn.dataset.id
 
 		if (btn.classList.contains('save-course')) {
-			const title = document.querySelector(`.edit-text[data-id="${id}"]`).value
-			const desc = document.querySelectorAll(`.edit-text[data-id="${id}"]`)[1]
-				.value
+			const inputs = document.querySelectorAll(`.edit-text[data-id="${id}"]`)
+			const title = inputs[0].value
+			const desc = inputs[1].value
 			try {
 				const res = await fetch('/api/teacher/courses', {
 					method: 'PUT',
@@ -5531,22 +5891,22 @@ function initTests() {
 			ts.forEach(t => {
 				const tr = document.createElement('tr')
 				tr.innerHTML = `
-                    <td><input class="edit-text" data-id="${t.id}" value="${
+          <td><input class="edit-text" data-id="${t.id}" value="${
 					t.title
 				}"></td>
-                    <td><input class="edit-text" data-id="${t.id}" value="${
+          <td><input class="edit-text" data-id="${t.id}" value="${
 					t.description
 				}"></td>
-                    <td>${t.course_id}</td>
-                    <td>${new Date(t.created_at).toLocaleDateString()}</td>
-                    <td>
-                        <button class="save-test" data-id="${
-													t.id
-												}"><i class="fas fa-save"></i> Сохранить</button>
-                        <button class="del-test"  data-id="${
-													t.id
-												}"><i class="fas fa-trash"></i> Удалить</button>
-                    </td>`
+          <td>${t.course_id}</td>
+          <td>${new Date(t.created_at).toLocaleDateString()}</td>
+          <td>
+            <button class="save-test" data-id="${
+							t.id
+						}"><i class="fas fa-save"></i> Сохранить</button>
+            <button class="del-test"  data-id="${
+							t.id
+						}"><i class="fas fa-trash"></i> Удалить</button>
+          </td>`
 				tbody.appendChild(tr)
 			})
 		})
@@ -5558,10 +5918,9 @@ function initTests() {
 		const id = +btn.dataset.id
 
 		if (btn.classList.contains('save-test')) {
-			const title = document.querySelectorAll(`.edit-text[data-id="${id}"]`)[0]
-				.value
-			const desc = document.querySelectorAll(`.edit-text[data-id="${id}"]`)[1]
-				.value
+			const inputs = document.querySelectorAll(`.edit-text[data-id="${id}"]`)
+			const title = inputs[0].value
+			const desc = inputs[1].value
 			try {
 				const res = await fetch('/api/teacher/tests', {
 					method: 'PUT',
@@ -5616,19 +5975,15 @@ function initTests() {
 	})
 }
 
+// -----------------------
+// Стартуем всё при загрузке страницы
+// -----------------------
 document.addEventListener('DOMContentLoaded', () => {
 	loadUserIcon()
 	updateToggleIcon(document.documentElement.getAttribute('data-theme'))
-
-	if (document.getElementById('teacherCoursesBody')) {
-		initCourses()
-	}
-	if (document.getElementById('testsBody')) {
-		initTests()
-	}
-	if (document.getElementById('questionsBody')) {
-		initQuestions()
-	}
+	if (document.getElementById('teacherCoursesBody')) initCourses()
+	if (document.getElementById('testsBody')) initTests()
+	if (document.getElementById('questionsBody')) initQuestions()
 })
 
 Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\style.css
@@ -5868,6 +6223,7 @@ body {
 
 /* CRUD BUTTONS */
 button.save-course,
+button.save-open-answer,
 button.save-test,
 button.save-question,
 button.save-option,
@@ -5892,6 +6248,7 @@ button.manage-options:hover {
 }
 button.del-course,
 button.del-test,
+button.delete-open-answer,
 button.del-question,
 button.del-option {
 	background: transparent;
@@ -5961,7 +6318,7 @@ input.edit-multi[type='checkbox'] {
 }
 
 .options-row .options-wrapper {
-	display: none;
+	/* display: none; */
 	padding: var(--sp-sm);
 	margin-top: var(--sp-md);
 	background: var(--bg);
@@ -6402,6 +6759,40 @@ table.variant-table thead {
 	display: table-header-group !important;
 }
 
+/* Обёртка, чтобы кнопки и поле располагались аккуратно */
+.open-answer-wrapper {
+	display: flex;
+	flex-wrap: wrap; /* Перенос строк, если места мало */
+	gap: var(--sp-sm); /* Расстояние между элементами */
+	align-items: center; /* Выравнивание по центру по вертикали */
+}
+
+/* Сама текстовая область */
+.open-answer-input {
+	flex: 1; /* Занимает всё доступное место */
+	min-width: 200px; /* Минимальная ширина для удобства */
+	max-width: 400px; /* Максимальная ширина */
+	width: 100%; /* Чтобы flex:1 работал корректно */
+	box-sizing: border-box; /* Включаем padding и border в ширину */
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--bg);
+	color: var(--text);
+	transition: border-color var(--trans), background var(--trans),
+		color var(--trans);
+}
+
+.checkbox-disabled {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.multi-answer-label.checkbox-disabled {
+	opacity: 0.4;
+	pointer-events: none;
+}
+
 /* ======= END MODAL STYLES ======= */
 
 /* MOBILE */
@@ -6437,6 +6828,7 @@ table.variant-table thead {
 		<header class="navbar">
 			<div class="logo" onclick="navigate('index.html')">Set Learn</div>
 			<nav class="nav-links">
+				<a href="/static/mainPage/index.html">Главная</a>
 				<a href="index.html">Панель учителя</a>
 				<a href="courses.html">Курсы</a>
 				<a href="tests.html" class="active">Тесты</a>
@@ -8401,12 +8793,13 @@ func GetTheoryWithTests(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /api/teacher/questions/set_open_answer
+// POST /api/teacher/questions/set_open_answer
 func teacherSetOpenAnswerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	// Авторизация как в teacherQuestionsHandler
+	// Авторизация
 	claims := getClaims(r.Context())
 	if claims == nil {
 		http.Error(w, "Forbidden", http.StatusForbidden)
@@ -8421,46 +8814,49 @@ func teacherSetOpenAnswerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Парсим форму
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Invalid form", http.StatusBadRequest)
+	// Парсим JSON тело
+	var data struct {
+		ID     int    `json:"id"`
+		Answer string `json:"answer"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-	qidStr := r.FormValue("question_id")
-	answer := r.FormValue("open_answer")
-	qid, err := strconv.Atoi(qidStr)
-	if err != nil {
-		http.Error(w, "Invalid question_id", http.StatusBadRequest)
-		return
-	}
+	qid := data.ID
+	answer := data.Answer
 
-	// Проверяем, что вопрос действительно учителя
+	// Проверяем владельца вопроса
 	var owner int
-	err = db.QueryRow(`
+	err := db.QueryRow(`
         SELECT c.teacher_id
         FROM questions q
-        JOIN tests t ON t.id=q.test_id
-        JOIN courses c ON c.id=t.course_id
-        WHERE q.id=$1
+        JOIN tests t ON t.id = q.test_id
+        JOIN courses c ON c.id = t.course_id
+        WHERE q.id = $1
     `, qid).Scan(&owner)
-	if err != nil || owner != teacherID {
+	if err != nil {
+		http.Error(w, "Question not found", http.StatusNotFound)
+		return
+	}
+	if owner != teacherID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	// Сохраняем ответ
-	_, err = db.Exec(
+	// Обновляем ответ
+	if _, err := db.Exec(
 		`UPDATE questions
-           SET correct_answer_text=$1
-         WHERE id=$2`,
+           SET correct_answer_text = $1
+         WHERE id = $2`,
 		answer, qid,
-	)
-	if err != nil {
+	); err != nil {
 		http.Error(w, "DB error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	// Возвращаем 200 OK (или 204 No Content)
+	w.WriteHeader(http.StatusOK)
 }
 
 Файл: C:\dev\projects\html\Курсовая работа\main.go

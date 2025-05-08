@@ -249,25 +249,27 @@ async function loadQuestions(testId) {
 // -----------------------
 // initQuestions
 // -----------------------
-function initQuestions() {
+async function initQuestions() {
 	const select = document.getElementById('testSelect')
 
 	// 1) Загрузка списка тестов
-	fetch('/api/teacher/tests', { credentials: 'include' })
-		.then(r => (r.ok ? r.json() : Promise.reject()))
-		.then(ts => {
-			ts.forEach(t => {
-				const o = document.createElement('option')
-				o.value = t.id
-				o.textContent = t.title
-				select.appendChild(o)
-			})
-			if (ts.length) {
-				select.value = ts[0].id
-				loadQuestions(ts[0].id)
-			}
+	try {
+		const r = await fetch('/api/teacher/tests', { credentials: 'include' })
+		if (!r.ok) throw new Error(r.statusText)
+		const ts = await r.json()
+		ts.forEach(t => {
+			const o = document.createElement('option')
+			o.value = t.id
+			o.textContent = t.title
+			select.appendChild(o)
 		})
-		.catch(err => console.error('Не удалось загрузить тесты', err))
+		if (ts.length) {
+			select.value = ts[0].id
+			await loadQuestions(ts[0].id)
+		}
+	} catch (err) {
+		console.error('Не удалось загрузить тесты', err)
+	}
 
 	// 2) При смене выбранного теста — перезагружаем вопросы
 	select.addEventListener('change', () => {
@@ -286,14 +288,8 @@ function initQuestions() {
 		answerInput.style.display = isOpen ? 'block' : 'none'
 		multiCheckboxNew.checked = false
 		multiCheckboxNew.disabled = isOpen
-
-		if (isOpen) {
-			multiCheckboxNew.classList.add('checkbox-disabled')
-			multiLabel.classList.add('checkbox-disabled')
-		} else {
-			multiCheckboxNew.classList.remove('checkbox-disabled')
-			multiLabel.classList.remove('checkbox-disabled')
-		}
+		multiCheckboxNew.classList.toggle('checkbox-disabled', isOpen)
+		multiLabel.classList.toggle('checkbox-disabled', isOpen)
 	})
 
 	form.addEventListener('submit', async e => {
@@ -316,7 +312,7 @@ function initQuestions() {
 			if (!res.ok) throw new Error(await res.text())
 			form.reset()
 			answerInput.style.display = 'none'
-			loadQuestions(payload.test_id)
+			await loadQuestions(payload.test_id)
 		} catch (err) {
 			alert('Ошибка создания вопроса: ' + err.message)
 		}
@@ -331,7 +327,6 @@ function initQuestions() {
 		const row = sel.closest('tr')
 		const multiInput = row.querySelector(`.edit-multi[data-id="${id}"]`)
 		const optsBtn = row.querySelector(`.manage-options[data-id="${id}"]`)
-
 		if (sel.value === 'open') {
 			multiInput.checked = false
 			multiInput.disabled = true
@@ -365,8 +360,6 @@ function initQuestions() {
 
 		// b) Сохранение открытого ответа
 		if (e.target.matches('.save-open-answer')) {
-			console.log('Клик на .save-open-answer', e.target)
-
 			const qid = e.target.dataset.id
 			const row = document.querySelector(`.options-row[data-qid="${qid}"]`)
 			const answer = row.querySelector('.open-answer-input').value.trim()
@@ -408,8 +401,7 @@ function initQuestions() {
 			return
 		}
 
-		// d) Другие кнопки: save-question, del-question, save-new-option, save-option, del-option
-		// Сохранить отредактированный вопрос
+		// d) Сохранить отредактированный вопрос
 		if (e.target.matches('.save-question')) {
 			const qid = e.target.dataset.id
 			const row = e.target.closest('tr')
@@ -424,18 +416,12 @@ function initQuestions() {
 				question_type: type,
 				multiple_choice: multi,
 			}
-
-			// Если тип вопроса — открытый, добавим правильный ответ
 			if (type === 'open') {
 				const optionsRow = document.querySelector(
 					`.options-row[data-qid="${qid}"]`
 				)
-				if (optionsRow) {
-					const input = optionsRow.querySelector('.open-answer-input')
-					if (input) {
-						payload.correct_answer_text = input.value.trim()
-					}
-				}
+				const input = optionsRow?.querySelector('.open-answer-input')
+				if (input) payload.correct_answer_text = input.value.trim()
 			}
 			try {
 				const res = await fetch('/api/teacher/questions', {
@@ -454,7 +440,7 @@ function initQuestions() {
 			return
 		}
 
-		// Удалить вопрос
+		// e) Удалить вопрос
 		if (e.target.matches('.del-question')) {
 			const qid = e.target.dataset.id
 			if (!confirm('Удалить вопрос?')) return
@@ -475,14 +461,13 @@ function initQuestions() {
 			return
 		}
 
-		// Создать новый вариант ответа для закрытого вопроса
+		// f) Создать новый вариант ответа для закрытого вопроса
 		if (e.target.matches('.save-new-option')) {
 			const qid = e.target.dataset.id
-			const wrapper = document.querySelector(
-				`.options-wrapper tbody#opts-${qid}`
-			)
-			const textEl = wrapper.parentElement.querySelector('.new-opt-text')
-			const correctEl = wrapper.parentElement.querySelector('.new-opt-correct')
+			// находим непосредственно <tr> с формой
+			const row = e.target.closest('tr')
+			const textEl = row.querySelector('.new-opt-text')
+			const correctEl = row.querySelector('.new-opt-correct')
 			const optionText = textEl.value.trim()
 			const isCorrect = correctEl.checked
 			if (!optionText) {
@@ -501,8 +486,10 @@ function initQuestions() {
 					}),
 				})
 				if (!res.ok) throw new Error(await res.text())
+				// очистка формы
 				textEl.value = ''
 				correctEl.checked = false
+				// обновляем список вариантов
 				await loadOptions(qid)
 			} catch (err) {
 				console.error(err)
@@ -511,7 +498,7 @@ function initQuestions() {
 			return
 		}
 
-		// Сохранить существующий вариант ответа
+		// g) Сохранить существующий вариант ответа
 		if (e.target.matches('.save-option')) {
 			const oid = e.target.dataset.id
 			const rowOpt = e.target.closest('tr')
@@ -521,9 +508,7 @@ function initQuestions() {
 			const isCorrect = rowOpt.querySelector(
 				`.edit-opt-correct[data-id="${oid}"]`
 			).checked
-			// определим qid по id tbody
-			const tbodyOpts = rowOpt.closest('tbody')
-			const qid = tbodyOpts.id.split('-')[1]
+			const qid = rowOpt.closest('tbody').id.split('-')[1]
 			try {
 				const res = await fetch('/api/teacher/options', {
 					method: 'PUT',
@@ -545,12 +530,11 @@ function initQuestions() {
 			return
 		}
 
-		// Удалить существующий вариант ответа
+		// h) Удалить существующий вариант ответа
 		if (e.target.matches('.del-option')) {
 			const oid = e.target.dataset.id
 			const rowOpt = e.target.closest('tr')
-			const tbodyOpts = rowOpt.closest('tbody')
-			const qid = tbodyOpts.id.split('-')[1]
+			const qid = rowOpt.closest('tbody').id.split('-')[1]
 			if (!confirm('Удалить вариант?')) return
 			try {
 				const res = await fetch('/api/teacher/options', {

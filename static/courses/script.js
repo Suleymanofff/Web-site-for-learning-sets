@@ -51,161 +51,281 @@ function updateToggleIcon(theme) {
 	// Добавляем изображение в кнопку
 	btn.appendChild(icon)
 }
+
+/* -----------------------
+	Утилита поиска
+------------------------ */
+// function filterCourses(courses, query) {
+// 	const q = query.trim().toLowerCase()
+// 	if (!q) return []
+
+// 	return courses.filter(course => {
+// 		const title = course.title.toLowerCase()
+// 		const desc = (course.description || '').toLowerCase()
+// 		const tagsText = (course.tags || []).join(' ').toLowerCase()
+
+// 		return title.includes(q) || desc.includes(q) || tagsText.includes(q)
+// 	})
+// }
+
+function filterCourses(courses, query) {
+	const q = query.trim().toLowerCase()
+	if (!q) return []
+
+	// 1. Фразовое совпадение: заголовок === запрос
+	const exact = courses.filter(c => c.title.toLowerCase() === q)
+	if (exact.length) {
+		return exact
+	}
+
+	// 2. Фильтрация по includes (любая подстрока)
+	const bySubstring = courses.filter(
+		c =>
+			c.title.toLowerCase().includes(q) ||
+			(c.description || '').toLowerCase().includes(q) ||
+			(c.tags || []).join(' ').toLowerCase().includes(q)
+	)
+	if (bySubstring.length) {
+		return bySubstring
+	}
+
+	// 3. Нечёткий (fuzzy) поиск
+
+	function fuzzyMatch(text) {
+		let idx = 0
+		for (const ch of text) {
+			if (ch === q[idx]) {
+				idx++
+				if (idx === q.length) return true
+			}
+		}
+		return false
+	}
+	return courses.filter(
+		c =>
+			fuzzyMatch(c.title.toLowerCase()) ||
+			fuzzyMatch((c.description || '').toLowerCase())
+	)
+
+	// 4. Если ничего не нашло
+	return []
+}
+
+/* -----------------------
+   Утилита Debounce
+------------------------ */
+function debounce(fn, delay = 300) {
+	let timer
+	return function (...args) {
+		clearTimeout(timer)
+		timer = setTimeout(() => fn.apply(this, args), delay)
+	}
+}
+
+/* -----------------------
+   Загрузка и поиск курсов с сервером и ARIA
+------------------------ */
 async function loadCourses() {
 	const container = document.querySelector('.courses-list')
 	const searchInput = document.getElementById('course-search')
 	const suggestions = document.getElementById('suggestions')
-	const wrapper = container.parentNode
+	const wrapper = document.querySelector('.search-wrapper')
+	let currentIdx = -1
+	let expanded = false
+	const VISIBLE_COUNT = 4
+	let allCourses = []
+	let filteredCourses = []
 
-	try {
+	// Кнопка очистки
+	const clearBtn = document.createElement('button')
+	clearBtn.type = 'button'
+	clearBtn.className = 'clear-search'
+	clearBtn.textContent = '×'
+	searchInput.insertAdjacentElement('afterend', clearBtn)
+	clearBtn.addEventListener('click', () => {
+		searchInput.value = ''
+		suggestions.innerHTML = ''
+		wrapper.setAttribute('aria-expanded', 'false')
+		resetSearch()
+	})
+
+	// Отрисовка карточки
+	function renderCard(course) {
+		const card = document.createElement('div')
+		card.className = 'course-card'
+		card.innerHTML = `
+			<h2>${course.title}</h2>
+			<p>${course.description}</p>
+			<div class="info">Тестов: ${course.test_count}</div>
+			<button onclick="navigate('/static/coursePage/index.html?course=${course.id}')">Открыть</button>
+		`
+		container.appendChild(card)
+	}
+
+	// Отрисовка списка
+	function renderCourses() {
+		container.innerHTML = ''
+		const list = expanded
+			? filteredCourses
+			: filteredCourses.slice(0, VISIBLE_COUNT)
+		list.forEach(renderCard)
+
+		const btn = document.getElementById('toggle-courses')
+		if (filteredCourses.length > VISIBLE_COUNT) {
+			btn.style.display = 'block'
+			btn.textContent = expanded ? 'Свернуть' : 'Показать больше'
+		} else {
+			btn.style.display = 'none'
+		}
+	}
+
+	// Получение курсов с сервера (без поиска)
+	async function fetchCourses() {
 		const res = await fetch('/api/courses', { credentials: 'same-origin' })
-		if (!res.ok) throw new Error(`Ошибка: ${res.status}`)
-		const courses = await res.json()
+		if (!res.ok) throw new Error(`Ошибка ${res.status}`)
+		return await res.json()
+	}
 
-		let expanded = false
-		const VISIBLE_COUNT = 4
-		let filteredCourses = courses
+	// Сброс поиска
+	function resetSearch() {
+		filteredCourses = allCourses
+		expanded = false
+		renderCourses()
+	}
 
-		// Кнопка "Показать больше / Свернуть"
-		const btn = document.createElement('button')
-		btn.id = 'toggle-courses'
-		wrapper.appendChild(btn)
-		btn.addEventListener('click', () => {
-			expanded = !expanded
+	// Поиск по локальному массиву
+	function applySearch(text) {
+		const query = text.trim()
+		if (!query) {
+			resetSearch()
+			return
+		}
+
+		const results = filterCourses(allCourses, query)
+		if (results.length) {
+			filteredCourses = results
+			expanded = true
 			renderCourses()
+		} else {
+			container.innerHTML = '<p>К сожалению такого курса нет.</p>'
+			document.getElementById('toggle-courses').style.display = 'none'
+		}
+	}
+
+	// Подсказки
+	function updateSuggestions(text) {
+		suggestions.innerHTML = ''
+		if (!text) {
+			wrapper.setAttribute('aria-expanded', 'false')
+			return
+		}
+		const matches = filterCourses(allCourses, text).slice(0, 10)
+		matches.forEach((course, idx) => {
+			const li = document.createElement('li')
+			li.setAttribute('role', 'option')
+			li.id = `suggestion-${idx}`
+			const re = new RegExp(`(${text})`, 'i')
+			li.innerHTML = course.title.replace(re, '<mark>$1</mark>')
+			suggestions.appendChild(li)
 		})
+		currentIdx = -1
+		wrapper.setAttribute('aria-expanded', 'true')
+	}
 
-		// Функция рендера карточки
-		function renderCard(course) {
-			const card = document.createElement('div')
-			card.className = 'course-card'
-			card.innerHTML = `
-        <h2>${course.title}</h2>
-        <p>${course.description}</p>
-        <div class="info">Тестов: ${course.test_count}</div>
-        <button onclick="navigate('/static/coursePage/index.html?course=${course.id}')">Открыть</button>
-      `
-			container.appendChild(card)
-		}
-
-		// Рендер списка и кнопки
-		function renderCourses() {
-			container.innerHTML = ''
-			const list = expanded
-				? filteredCourses
-				: filteredCourses.slice(0, VISIBLE_COUNT)
-			list.forEach(renderCard)
-
-			if (filteredCourses.length > VISIBLE_COUNT) {
-				btn.style.display = 'block'
-				btn.textContent = expanded ? 'Свернуть' : 'Показать больше'
-			} else {
-				btn.style.display = 'none'
+	// Подсветка подсказки
+	function highlight(items) {
+		items.forEach((li, idx) => {
+			li.classList.toggle('active', idx === currentIdx)
+			li.setAttribute('aria-selected', idx === currentIdx)
+			if (idx === currentIdx) {
+				searchInput.setAttribute('aria-activedescendant', li.id)
 			}
-		}
+		})
+	}
 
-		// Сброс фильтрации при пустом вводе + Enter
-		function resetSearch() {
-			filteredCourses = courses
-			expanded = false
-			renderCourses()
-		}
+	// Debounce
+	const debouncedSuggest = debounce(text => updateSuggestions(text), 300)
 
-		// Применение поиска по точному совпадению
-		function applySearch(text) {
-			const match = courses.find(
-				c => c.title.toLowerCase() === text.toLowerCase()
-			)
-			if (match) {
-				filteredCourses = [match]
-				expanded = true
-				renderCourses()
-			} else {
-				container.innerHTML = `<p>К сожалению такого курса нет.</p>`
-				btn.style.display = 'none'
-			}
-		}
-
-		// Обновление списка подсказок (только те, что начинаются на введённый текст)
-		function updateSuggestions(text) {
+	// Обработчики клавиш
+	searchInput.addEventListener('keydown', e => {
+		const items = suggestions.querySelectorAll('li')
+		if (e.key === 'ArrowDown') {
+			e.preventDefault()
+			if (!items.length) return
+			currentIdx = Math.min(currentIdx + 1, items.length - 1)
+			highlight(items)
+		} else if (e.key === 'ArrowUp') {
+			e.preventDefault()
+			if (!items.length) return
+			currentIdx = Math.max(currentIdx - 1, 0)
+			highlight(items)
+		} else if (e.key === 'Escape') {
 			suggestions.innerHTML = ''
-			if (!text) return
-			const prefix = text.toLowerCase()
-			const matches = courses
-				.map(c => c.title)
-				.filter(title => title.toLowerCase().startsWith(prefix))
-			matches.forEach(title => {
-				const li = document.createElement('li')
-				li.textContent = title
-				suggestions.appendChild(li)
-			})
 			currentIdx = -1
-		}
-
-		// Навигация по подсказкам стрелками
-		let currentIdx = -1
-		searchInput.addEventListener('keydown', e => {
-			const items = suggestions.querySelectorAll('li')
-
-			if (e.key === 'ArrowDown') {
-				e.preventDefault()
-				if (items.length === 0) return
-				currentIdx = Math.min(currentIdx + 1, items.length - 1)
-				highlight(items)
-			} else if (e.key === 'ArrowUp') {
-				e.preventDefault()
-				if (items.length === 0) return
-				currentIdx = Math.max(currentIdx - 1, 0)
-				highlight(items)
-			} else if (e.key === 'Enter') {
-				e.preventDefault()
-				suggestions.innerHTML = ''
-
-				// 1) Если выделена подсказка — выбираем её
-				if (currentIdx >= 0 && items[currentIdx]) {
-					const selectedTitle = items[currentIdx].textContent
-					searchInput.value = selectedTitle
-					applySearch(selectedTitle)
-
-					// 2) Если поле пустое — сбрасываем
-				} else if (!searchInput.value.trim()) {
-					resetSearch()
-
-					// 3) Иначе — ищем по введённому тексту
-				} else {
-					applySearch(searchInput.value.trim())
-				}
-			}
-		})
-
-		function highlight(items) {
-			items.forEach((li, idx) => {
-				li.classList.toggle('active', idx === currentIdx)
-			})
-			if (currentIdx >= 0) {
-				items[currentIdx].scrollIntoView({ block: 'nearest' })
-			}
-		}
-
-		// Клик по подсказке мышью
-		suggestions.addEventListener('click', e => {
-			if (e.target.tagName === 'LI') {
-				const title = e.target.textContent
+			wrapper.setAttribute('aria-expanded', 'false')
+		} else if (e.key === 'Enter') {
+			e.preventDefault()
+			if (currentIdx >= 0 && items[currentIdx]) {
+				const title = items[currentIdx].textContent
 				searchInput.value = title
 				suggestions.innerHTML = ''
 				applySearch(title)
+			} else if (!searchInput.value.trim()) {
+				resetSearch()
+			} else {
+				applySearch(searchInput.value.trim())
 			}
-		})
+		}
+	})
 
-		// Автоподсказки при вводе
-		searchInput.addEventListener('input', () => {
-			updateSuggestions(searchInput.value.trim())
-		})
+	// Клик по подсказке
+	suggestions.addEventListener('click', e => {
+		if (e.target.tagName === 'LI') {
+			const title = e.target.textContent
+			searchInput.value = title
+			suggestions.innerHTML = ''
+			applySearch(title)
+		}
+	})
 
-		// Инициализация
-		resetSearch()
+	// По вводу
+	searchInput.addEventListener('input', e => {
+		const text = e.target.value.trim()
+		if (!text) {
+			suggestions.innerHTML = ''
+			wrapper.setAttribute('aria-expanded', 'false')
+			return
+		}
+		debouncedSuggest(text)
+	})
+
+	// Клики вне поля
+	document.addEventListener('click', e => {
+		if (!searchInput.contains(e.target) && !suggestions.contains(e.target)) {
+			suggestions.innerHTML = ''
+			currentIdx = -1
+			wrapper.setAttribute('aria-expanded', 'false')
+		}
+	})
+
+	// Кнопка "Показать больше"
+	const header = document.querySelector('.page-content h1')
+	const toggleBtn = document.createElement('button')
+	toggleBtn.id = 'toggle-courses'
+	toggleBtn.textContent = 'Показать больше'
+	toggleBtn.addEventListener('click', () => {
+		expanded = !expanded
+		renderCourses()
+	})
+	header.insertAdjacentElement('afterend', toggleBtn)
+
+	// Загружаем все курсы и стартуем
+	try {
+		allCourses = await fetchCourses()
+		filteredCourses = allCourses
+		renderCourses()
 	} catch (err) {
-		container.innerHTML = `<p>Не удалось загрузить курсы: ${err.message}</p>`
+		container.innerHTML = `<p>Ошибка загрузки: ${err.message}</p>`
 	}
 }
 
