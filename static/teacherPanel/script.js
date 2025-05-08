@@ -41,9 +41,7 @@ function updateToggleIcon(theme) {
 let quickIsDirty = false
 
 function openQuestionModal(testId) {
-	// проставляем в скрытое поле id теста
 	document.getElementById('quickTestId').value = testId
-	// показываем модалку
 	document.getElementById('questionModal').style.display = 'flex'
 	quickIsDirty = false
 	document.getElementById('saveQuickQuestions').disabled = true
@@ -66,7 +64,6 @@ function forceCloseModal() {
 	document.getElementById('questionModal').style.display = 'none'
 	document.getElementById('unsavedConfirm').style.display = 'none'
 	clearQuickModal()
-	// Перезагружаем страницу, чтобы обновить список тестов:
 	location.reload()
 }
 
@@ -78,7 +75,6 @@ async function saveQuickQuestions() {
 	const testId = +document.getElementById('quickTestId').value
 	const items = document.querySelectorAll('#quickQuestionsList .question-item')
 	for (let li of items) {
-		// 1) создаём вопрос
 		const qRes = await fetch('/api/teacher/questions', {
 			method: 'POST',
 			credentials: 'include',
@@ -93,7 +89,6 @@ async function saveQuickQuestions() {
 		if (!qRes.ok) throw new Error('Не удалось сохранить вопрос')
 		const { id: realQid } = await qRes.json()
 
-		// 2) создаём варианты
 		for (let opt of li.querySelectorAll('.options-list .option-item')) {
 			await fetch('/api/teacher/options', {
 				method: 'POST',
@@ -112,126 +107,469 @@ async function saveQuickQuestions() {
 	forceCloseModal()
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-	// активная ссылка
-	const page = window.location.pathname.split('/').pop()
-	document.querySelectorAll('.nav-links a').forEach(link => {
-		link.classList.toggle('active', link.getAttribute('href') === page)
+// -----------------------
+// loadOptions
+// -----------------------
+async function loadOptions(questionId) {
+	const tbodyOpts = document.getElementById(`opts-${questionId}`)
+	if (!tbodyOpts) return
+	tbodyOpts.innerHTML = ''
+	try {
+		const res = await fetch(`/api/teacher/options?question_id=${questionId}`, {
+			credentials: 'include',
+		})
+		if (!res.ok) throw ''
+		const opts = await res.json()
+		opts.forEach(o => {
+			const tr = document.createElement('tr')
+			tr.innerHTML = `
+        <td><input class="edit-opt-text" data-id="${o.id}" value="${
+				o.option_text
+			}"></td>
+        <td><input type="checkbox" class="edit-opt-correct" data-id="${o.id}"${
+				o.is_correct ? ' checked' : ''
+			}></td>
+        <td>
+          <button class="save-option" data-id="${
+						o.id
+					}"><i class="fas fa-save"></i></button>
+          <button class="del-option" data-id="${
+						o.id
+					}"><i class="fas fa-trash"></i></button>
+        </td>`
+			tbodyOpts.appendChild(tr)
+		})
+	} catch {
+		console.error('Ошибка загрузки вариантов')
+	}
+}
+
+async function loadQuestions(testId) {
+	const tbody = document.getElementById('questionsBody')
+	tbody.innerHTML = ''
+	if (!testId) return
+	try {
+		const res = await fetch(`/api/teacher/questions?test_id=${testId}`, {
+			credentials: 'include',
+		})
+		if (!res.ok) throw ''
+		const qs = await res.json()
+		qs.forEach(q => {
+			// Основная строка
+			const tr = document.createElement('tr')
+			tr.innerHTML = `
+        <td><input class="edit-text" data-id="${q.id}" value="${
+				q.question_text
+			}"></td>
+        <td>
+          <select class="edit-type" data-id="${q.id}">
+            <option value="open"${
+							q.question_type === 'open' ? ' selected' : ''
+						}>Открытый</option>
+            <option value="closed"${
+							q.question_type === 'closed' ? ' selected' : ''
+						}>Закрытый</option>
+          </select>
+        </td>
+        <td>
+  <input type="checkbox" class="edit-multi ${
+		q.question_type === 'open' ? 'checkbox-disabled' : ''
+	}" 
+         data-id="${q.id}" 
+         ${q.multiple_choice ? 'checked' : ''} 
+         ${q.question_type === 'open' ? 'disabled' : ''}>
+</td>
+
+        <td>${q.test_id}</td>
+        <td>${new Date(q.created_at).toLocaleDateString()}</td>
+        <td>
+          <button class="manage-options"
+                  data-id="${q.id}"
+                  data-type="${q.question_type}">
+            <i class="fas fa-list"></i> Варианты
+          </button>
+        </td>
+        <td>
+          <button class="save-question" data-id="${
+						q.id
+					}"><i class="fas fa-save"></i> Сохранить</button>
+          <button class="del-question"  data-id="${
+						q.id
+					}"><i class="fas fa-trash"></i> Удалить</button>
+        </td>`
+			tbody.appendChild(tr)
+
+			// Скрытая строка
+			const trOpts = document.createElement('tr')
+			trOpts.className = 'options-row'
+			trOpts.dataset.qid = q.id
+			trOpts.dataset.type = q.question_type
+			trOpts.style.display = 'none'
+
+			if (q.question_type === 'closed') {
+				trOpts.innerHTML = `
+          <td colspan="7">
+            <div class="options-wrapper" style="min-height:100px; padding:10px;">
+              <table class="options-table">
+                <thead><tr><th>Вариант</th><th>Правильный?</th><th>Действия</th></tr></thead>
+                <tbody id="opts-${q.id}"></tbody>
+              </table>
+              <div class="option-form">
+                <input type="text" class="new-opt-text" placeholder="Новый вариант">
+                <input type="checkbox" class="new-opt-correct">
+                <button class="save-new-option" data-id="${q.id}"><i class="fas fa-plus"></i></button>
+              </div>
+            </div>
+          </td>`
+			} else {
+				trOpts.innerHTML = `
+          <td colspan="7">
+      <div class="options-wrapper">
+        <div class="open-answer-wrapper">
+          <label>Правильный ответ:</label>
+          <input type="text" class="open-answer-input" value="${
+						q.correct_answer_text || ''
+					}" />
+              <button class="save-open-answer" data-id="${
+								q.id
+							}">Сохранить</button>
+              <button class="delete-open-answer" data-id="${
+								q.id
+							}">Удалить</button>
+            </div>
+          </td>`
+			}
+			tbody.appendChild(trOpts)
+		})
+	} catch {
+		console.error('Ошибка загрузки вопросов')
+	}
+}
+
+// -----------------------
+// initQuestions
+// -----------------------
+function initQuestions() {
+	const select = document.getElementById('testSelect')
+
+	// 1) Загрузка списка тестов
+	fetch('/api/teacher/tests', { credentials: 'include' })
+		.then(r => (r.ok ? r.json() : Promise.reject()))
+		.then(ts => {
+			ts.forEach(t => {
+				const o = document.createElement('option')
+				o.value = t.id
+				o.textContent = t.title
+				select.appendChild(o)
+			})
+			if (ts.length) {
+				select.value = ts[0].id
+				loadQuestions(ts[0].id)
+			}
+		})
+		.catch(err => console.error('Не удалось загрузить тесты', err))
+
+	// 2) При смене выбранного теста — перезагружаем вопросы
+	select.addEventListener('change', () => {
+		loadQuestions(select.value)
 	})
 
-	// тема
-	const stored = localStorage.getItem('theme')
-	const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-	const theme = stored || (prefersDark ? 'dark' : 'light')
-	document.documentElement.setAttribute('data-theme', theme)
-	updateToggleIcon(theme)
-	document.getElementById('theme-toggle').addEventListener('click', () => {
-		const next =
-			document.documentElement.getAttribute('data-theme') === 'dark'
-				? 'light'
-				: 'dark'
-		document.documentElement.setAttribute('data-theme', next)
-		localStorage.setItem('theme', next)
-		updateToggleIcon(next)
-	})
+	// 3) Форма добавления нового вопроса
+	const form = document.getElementById('newQuestionForm')
+	const typeSelect = document.getElementById('newQuestionType')
+	const answerInput = document.getElementById('newAnswerInput')
+	const multiCheckboxNew = form.querySelector("input[name='multiple_choice']")
+	const multiLabel = document.getElementById('multiAnswerLabel')
 
-	loadUserIcon()
+	typeSelect.addEventListener('change', () => {
+		const isOpen = typeSelect.value === 'open'
+		answerInput.style.display = isOpen ? 'block' : 'none'
+		multiCheckboxNew.checked = false
+		multiCheckboxNew.disabled = isOpen
 
-	// в зависимости от страницы запускаем нужную инициализацию
-	if (page === 'courses.html') initCourses()
-	if (page === 'tests.html') initTests()
-	if (page === 'questions.html') initQuestions()
-
-	// === слушатели модалки ===
-	document
-		.getElementById('closeQuestionModal')
-		.addEventListener('click', tryCloseModal)
-	document
-		.getElementById('forceClose')
-		.addEventListener('click', forceCloseModal)
-	document.getElementById('cancelClose').addEventListener('click', cancelClose)
-	window.addEventListener('click', e => {
-		if (e.target.id === 'questionModal') tryCloseModal()
-	})
-
-	// добавить вопрос «на лету»
-	document.getElementById('quickQuestionForm').addEventListener('submit', e => {
-		e.preventDefault()
-		const fd = new FormData(e.target)
-		const qid = Date.now().toString()
-		const text = fd.get('question_text').trim()
-		const type = fd.get('question_type')
-		const multi = fd.get('multiple_choice') === 'on'
-		if (!text) return
-
-		const li = document.createElement('li')
-		li.className = 'question-item'
-		li.dataset.qid = qid
-		li.dataset.type = type
-		li.dataset.multi = multi
-		li.innerHTML = `
-    <div class="question-header">
-    <span class="question-text">${text}</span>
-    <button class="expand-options" title="Варианты">+</button>
-	</div>
-    <div class="options-builder" style="display:none">
-      <ul class="options-list"></ul>
-      <form class="new-option-form">
-        <input type="text" name="option_text" placeholder="Новый вариант" required>
-        <label>
-          <input type="${
-						multi ? 'checkbox' : 'radio'
-					}" name="correct_${qid}" class="option-correct">
-          Правильный
-        </label>
-        <button type="submit">Добавить</button>
-      </form>
-    </div>`
-		document.getElementById('quickQuestionsList').appendChild(li)
-		quickIsDirty = true
-		document.getElementById('saveQuickQuestions').disabled = false
-		e.target.reset()
-	})
-
-	// делегируем раскрытие блока вариантов и добавление вариантов
-	document.getElementById('quickQuestionsList').addEventListener('click', e => {
-		if (e.target.classList.contains('expand-options')) {
-			const item = e.target.closest('.question-item')
-			const b = item.querySelector('.options-builder')
-			b.style.display = b.style.display === 'none' ? 'block' : 'none'
+		if (isOpen) {
+			multiCheckboxNew.classList.add('checkbox-disabled')
+			multiLabel.classList.add('checkbox-disabled')
+		} else {
+			multiCheckboxNew.classList.remove('checkbox-disabled')
+			multiLabel.classList.remove('checkbox-disabled')
 		}
 	})
 
-	document
-		.getElementById('quickQuestionsList')
-		.addEventListener('submit', e => {
-			if (!e.target.classList.contains('new-option-form')) return
-			e.preventDefault()
-			const form = e.target
-			const item = form.closest('.question-item')
-			const list = item.querySelector('.options-list')
-			const fd = new FormData(form)
-			const text = fd.get('option_text').trim()
-			const corr = form.querySelector('.option-correct').checked
-			if (!text) return
-			const li = document.createElement('li')
-			li.className = 'option-item'
-			li.innerHTML = `
-    <span class="option-text">${text}</span>
-    <input type="${item.dataset.multi === 'true' ? 'checkbox' : 'radio'}"
-           name="correct_${item.dataset.qid}"
-           ${corr ? 'checked' : ''}>`
-			list.appendChild(li)
-			quickIsDirty = true
-			document.getElementById('saveQuickQuestions').disabled = false
+	form.addEventListener('submit', async e => {
+		e.preventDefault()
+		const fd = new FormData(form)
+		const payload = {
+			test_id: +fd.get('test_id'),
+			question_text: fd.get('question_text'),
+			question_type: fd.get('question_type'),
+			multiple_choice: fd.get('multiple_choice') === 'on',
+			correct_answer_text: fd.get('correct_answer_text') || null,
+		}
+		try {
+			const res = await fetch('/api/teacher/questions', {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			})
+			if (!res.ok) throw new Error(await res.text())
 			form.reset()
-		})
+			answerInput.style.display = 'none'
+			loadQuestions(payload.test_id)
+		} catch (err) {
+			alert('Ошибка создания вопроса: ' + err.message)
+		}
+	})
 
-	// кнопка «Сохранить всё»
-	document
-		.getElementById('saveQuickQuestions')
-		.addEventListener('click', saveQuickQuestions)
-})
+	// 4) Изменение типа вопроса прямо в таблице вопросов
+	const tbody = document.getElementById('questionsBody')
+	tbody.addEventListener('change', e => {
+		if (!e.target.matches('.edit-type')) return
+		const sel = e.target
+		const id = sel.dataset.id
+		const row = sel.closest('tr')
+		const multiInput = row.querySelector(`.edit-multi[data-id="${id}"]`)
+		const optsBtn = row.querySelector(`.manage-options[data-id="${id}"]`)
+
+		if (sel.value === 'open') {
+			multiInput.checked = false
+			multiInput.disabled = true
+			multiInput.classList.add('checkbox-disabled')
+			optsBtn.style.display = 'none'
+		} else {
+			multiInput.disabled = false
+			multiInput.classList.remove('checkbox-disabled')
+			optsBtn.style.display = 'inline-block'
+		}
+	})
+
+	// 5) Делегированный обработчик кликов по таблице вопросов
+	tbody.addEventListener('click', async e => {
+		// a) Переключение панели вариантов/ответа
+		if (e.target.closest('.manage-options')) {
+			const btn = e.target.closest('.manage-options')
+			const qid = btn.dataset.id
+			const row = document.querySelector(`.options-row[data-qid="${qid}"]`)
+			const isHidden = getComputedStyle(row).display === 'none'
+			if (isHidden) {
+				if (btn.dataset.type === 'closed') {
+					await loadOptions(qid)
+				}
+				row.style.display = 'table-row'
+			} else {
+				row.style.display = 'none'
+			}
+			return
+		}
+
+		// b) Сохранение открытого ответа
+		if (e.target.matches('.save-open-answer')) {
+			console.log('Клик на .save-open-answer', e.target)
+
+			const qid = e.target.dataset.id
+			const row = document.querySelector(`.options-row[data-qid="${qid}"]`)
+			const answer = row.querySelector('.open-answer-input').value.trim()
+			try {
+				const res = await fetch('/api/teacher/questions/set_open_answer', {
+					method: 'POST',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id: +qid, answer }),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				alert('Ответ сохранён')
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось сохранить ответ')
+			}
+			return
+		}
+
+		// c) Удаление открытого ответа
+		if (e.target.matches('.delete-open-answer')) {
+			const qid = e.target.dataset.id
+			if (!confirm('Удалить ответ?')) return
+			try {
+				const res = await fetch('/api/teacher/questions/set_open_answer', {
+					method: 'POST',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id: +qid, answer: '' }),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				const row = document.querySelector(`.options-row[data-qid="${qid}"]`)
+				row.querySelector('.open-answer-input').value = ''
+				alert('Ответ удалён')
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось удалить ответ')
+			}
+			return
+		}
+
+		// d) Другие кнопки: save-question, del-question, save-new-option, save-option, del-option
+		// Сохранить отредактированный вопрос
+		if (e.target.matches('.save-question')) {
+			const qid = e.target.dataset.id
+			const row = e.target.closest('tr')
+			const text = row
+				.querySelector(`.edit-text[data-id="${qid}"]`)
+				.value.trim()
+			const type = row.querySelector(`.edit-type[data-id="${qid}"]`).value
+			const multi = row.querySelector(`.edit-multi[data-id="${qid}"]`).checked
+			const payload = {
+				id: +qid,
+				question_text: text,
+				question_type: type,
+				multiple_choice: multi,
+			}
+
+			// Если тип вопроса — открытый, добавим правильный ответ
+			if (type === 'open') {
+				const optionsRow = document.querySelector(
+					`.options-row[data-qid="${qid}"]`
+				)
+				if (optionsRow) {
+					const input = optionsRow.querySelector('.open-answer-input')
+					if (input) {
+						payload.correct_answer_text = input.value.trim()
+					}
+				}
+			}
+			try {
+				const res = await fetch('/api/teacher/questions', {
+					method: 'PUT',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(payload),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				alert('Вопрос сохранён')
+				loadQuestions(select.value)
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось сохранить вопрос')
+			}
+			return
+		}
+
+		// Удалить вопрос
+		if (e.target.matches('.del-question')) {
+			const qid = e.target.dataset.id
+			if (!confirm('Удалить вопрос?')) return
+			try {
+				const res = await fetch('/api/teacher/questions', {
+					method: 'DELETE',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id: +qid }),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				alert('Вопрос удалён')
+				loadQuestions(select.value)
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось удалить вопрос')
+			}
+			return
+		}
+
+		// Создать новый вариант ответа для закрытого вопроса
+		if (e.target.matches('.save-new-option')) {
+			const qid = e.target.dataset.id
+			const wrapper = document.querySelector(
+				`.options-wrapper tbody#opts-${qid}`
+			)
+			const textEl = wrapper.parentElement.querySelector('.new-opt-text')
+			const correctEl = wrapper.parentElement.querySelector('.new-opt-correct')
+			const optionText = textEl.value.trim()
+			const isCorrect = correctEl.checked
+			if (!optionText) {
+				alert('Введите текст варианта')
+				return
+			}
+			try {
+				const res = await fetch('/api/teacher/options', {
+					method: 'POST',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						question_id: +qid,
+						option_text: optionText,
+						is_correct: isCorrect,
+					}),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				textEl.value = ''
+				correctEl.checked = false
+				await loadOptions(qid)
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось добавить вариант')
+			}
+			return
+		}
+
+		// Сохранить существующий вариант ответа
+		if (e.target.matches('.save-option')) {
+			const oid = e.target.dataset.id
+			const rowOpt = e.target.closest('tr')
+			const optionText = rowOpt
+				.querySelector(`.edit-opt-text[data-id="${oid}"]`)
+				.value.trim()
+			const isCorrect = rowOpt.querySelector(
+				`.edit-opt-correct[data-id="${oid}"]`
+			).checked
+			// определим qid по id tbody
+			const tbodyOpts = rowOpt.closest('tbody')
+			const qid = tbodyOpts.id.split('-')[1]
+			try {
+				const res = await fetch('/api/teacher/options', {
+					method: 'PUT',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						id: +oid,
+						option_text: optionText,
+						is_correct: isCorrect,
+					}),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				alert('Вариант сохранён')
+				await loadOptions(qid)
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось сохранить вариант')
+			}
+			return
+		}
+
+		// Удалить существующий вариант ответа
+		if (e.target.matches('.del-option')) {
+			const oid = e.target.dataset.id
+			const rowOpt = e.target.closest('tr')
+			const tbodyOpts = rowOpt.closest('tbody')
+			const qid = tbodyOpts.id.split('-')[1]
+			if (!confirm('Удалить вариант?')) return
+			try {
+				const res = await fetch('/api/teacher/options', {
+					method: 'DELETE',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id: +oid }),
+				})
+				if (!res.ok) throw new Error(await res.text())
+				alert('Вариант удалён')
+				await loadOptions(qid)
+			} catch (err) {
+				console.error(err)
+				alert('Не удалось удалить вариант')
+			}
+			return
+		}
+	})
+}
 
 // -----------------------
 // initCourses
@@ -268,10 +606,11 @@ function initCourses() {
 		const btn = e.target.closest('button')
 		if (!btn) return
 		const id = +btn.dataset.id
-		// save
+
 		if (btn.classList.contains('save-course')) {
-			const title = document.querySelector(`.edit-text[data-id="${id}"]`).value
-			const desc = document.querySelector(`.edit-text[data-id="${id}"]`).value
+			const inputs = document.querySelectorAll(`.edit-text[data-id="${id}"]`)
+			const title = inputs[0].value
+			const desc = inputs[1].value
 			try {
 				const res = await fetch('/api/teacher/courses', {
 					method: 'PUT',
@@ -285,7 +624,7 @@ function initCourses() {
 				alert(err.message)
 			}
 		}
-		// delete
+
 		if (btn.classList.contains('del-course')) {
 			if (!confirm('Удалить курс?')) return
 			try {
@@ -362,7 +701,7 @@ function initTests() {
             <button class="save-test" data-id="${
 							t.id
 						}"><i class="fas fa-save"></i> Сохранить</button>
-            <button class="del-test" data-id="${
+            <button class="del-test"  data-id="${
 							t.id
 						}"><i class="fas fa-trash"></i> Удалить</button>
           </td>`
@@ -375,9 +714,11 @@ function initTests() {
 		const btn = e.target.closest('button')
 		if (!btn) return
 		const id = +btn.dataset.id
+
 		if (btn.classList.contains('save-test')) {
-			const title = document.querySelector(`.edit-text[data-id="${id}"]`).value
-			const desc = document.querySelector(`.edit-text[data-id="${id}"]`).value
+			const inputs = document.querySelectorAll(`.edit-text[data-id="${id}"]`)
+			const title = inputs[0].value
+			const desc = inputs[1].value
 			try {
 				const res = await fetch('/api/teacher/tests', {
 					method: 'PUT',
@@ -391,6 +732,7 @@ function initTests() {
 				alert(err.message)
 			}
 		}
+
 		if (btn.classList.contains('del-test')) {
 			if (!confirm('Удалить тест?')) return
 			try {
@@ -432,293 +774,12 @@ function initTests() {
 }
 
 // -----------------------
-// initQuestions
+// Стартуем всё при загрузке страницы
 // -----------------------
-async function initQuestions() {
-	const select = document.getElementById('testSelect')
-	const tbody = document.getElementById('questionsBody')
-
-	// загрузить тесты
-	try {
-		const res = await fetch('/api/teacher/tests', { credentials: 'include' })
-		if (!res.ok) throw ''
-		const ts = await res.json()
-		ts.forEach(t => {
-			const o = document.createElement('option')
-			o.value = t.id
-			o.textContent = t.title
-			select.appendChild(o)
-		})
-		if (ts.length) {
-			select.value = ts[0].id
-			loadQuestions(ts[0].id)
-		}
-	} catch {
-		console.error('Не удалось загрузить тесты')
-	}
-
-	select.addEventListener('change', () => loadQuestions(select.value))
-
-	document
-		.getElementById('newQuestionForm')
-		.addEventListener('submit', async e => {
-			e.preventDefault()
-			const fd = new FormData(e.target)
-			const payload = {
-				test_id: +fd.get('test_id'),
-				question_text: fd.get('question_text'),
-				question_type: fd.get('question_type'),
-				multiple_choice: fd.get('multiple_choice') === 'on',
-			}
-			try {
-				const res = await fetch('/api/teacher/questions', {
-					method: 'POST',
-					credentials: 'include',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(payload),
-				})
-				if (!res.ok) throw new Error(await res.text())
-				e.target.reset()
-				loadQuestions(payload.test_id)
-			} catch (err) {
-				alert('Ошибка создания вопроса: ' + err.message)
-			}
-		})
-
-	tbody.addEventListener('click', async e => {
-		const btn = e.target.closest('button')
-		if (!btn) return
-		const id = +btn.dataset.id
-
-		if (btn.classList.contains('manage-options')) {
-			const row = document.querySelector(`.options-row[data-qid="${id}"]`)
-			if (row.style.display === 'none') {
-				await loadOptions(id)
-				row.style.display = ''
-			} else {
-				row.style.display = 'none'
-			}
-			return
-		}
-
-		if (btn.classList.contains('save-question')) {
-			const text = document.querySelector(`.edit-text[data-id="${id}"]`).value
-			const type = document.querySelector(`.edit-type[data-id="${id}"]`).value
-			const multi = document.querySelector(
-				`.edit-multi[data-id="${id}"]`
-			).checked
-			try {
-				const res = await fetch('/api/teacher/questions', {
-					method: 'PUT',
-					credentials: 'include',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						id,
-						question_text: text,
-						question_type: type,
-						multiple_choice: multi,
-					}),
-				})
-				if (!res.ok) throw new Error(await res.text())
-				alert('Вопрос сохранён')
-			} catch (err) {
-				alert(err.message)
-			}
-			return
-		}
-
-		if (btn.classList.contains('del-question')) {
-			if (!confirm('Удалить вопрос?')) return
-			try {
-				const res = await fetch('/api/teacher/questions', {
-					method: 'DELETE',
-					credentials: 'include',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ id }),
-				})
-				if (!res.ok) throw new Error(await res.text())
-				loadQuestions(select.value)
-			} catch (err) {
-				alert(err.message)
-			}
-			return
-		}
-
-		if (btn.classList.contains('save-new-option')) {
-			const qid = +btn.dataset.id
-			const form = btn.closest('.option-form')
-			const text = form.querySelector('.new-opt-text').value.trim()
-			const correct = form.querySelector('.new-opt-correct').checked
-			if (!text) return
-			try {
-				const res = await fetch('/api/teacher/options', {
-					method: 'POST',
-					credentials: 'include',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						question_id: qid,
-						option_text: text,
-						is_correct: correct,
-					}),
-				})
-				if (!res.ok) throw new Error(await res.text())
-				form.querySelector('.new-opt-text').value = ''
-				loadOptions(qid)
-			} catch (err) {
-				alert(err.message)
-			}
-			return
-		}
-
-		if (btn.classList.contains('save-option')) {
-			const oid = +btn.dataset.id
-			const text = document.querySelector(
-				`.edit-opt-text[data-id="${oid}"]`
-			).value
-			const correct = document.querySelector(
-				`.edit-opt-correct[data-id="${oid}"]`
-			).checked
-			try {
-				const res = await fetch('/api/teacher/options', {
-					method: 'PUT',
-					credentials: 'include',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						id: oid,
-						option_text: text,
-						is_correct: correct,
-					}),
-				})
-				if (!res.ok) throw new Error(await res.text())
-				alert('Вариант сохранён')
-			} catch (err) {
-				alert(err.message)
-			}
-			return
-		}
-
-		if (btn.classList.contains('del-option')) {
-			if (!confirm('Удалить вариант?')) return
-			try {
-				const res = await fetch('/api/teacher/options', {
-					method: 'DELETE',
-					credentials: 'include',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ id }),
-				})
-				if (!res.ok) throw new Error(await res.text())
-				btn.closest('tr').remove()
-			} catch (err) {
-				alert(err.message)
-			}
-			return
-		}
-	})
-}
-
-// -----------------------
-// loadQuestions
-// -----------------------
-async function loadQuestions(testId) {
-	const tbody = document.getElementById('questionsBody')
-	tbody.innerHTML = ''
-	if (!testId) return
-	try {
-		const res = await fetch(`/api/teacher/questions?test_id=${testId}`, {
-			credentials: 'include',
-		})
-		if (!res.ok) throw ''
-		const qs = await res.json()
-		qs.forEach(q => {
-			const tr = document.createElement('tr')
-			tr.innerHTML = `
-        <td><input class="edit-text" data-id="${q.id}" value="${
-				q.question_text
-			}"></td>
-        <td>
-          <select class="edit-type" data-id="${q.id}">
-            <option value="open"${
-							q.question_type === 'open' ? ' selected' : ''
-						}>Открытый</option>
-            <option value="closed"${
-							q.question_type === 'closed' ? ' selected' : ''
-						}>Закрытый</option>
-          </select>
-        </td>
-        <td><input type="checkbox" class="edit-multi" data-id="${q.id}"${
-				q.multiple_choice ? ' checked' : ''
-			}></td>
-        <td>${q.test_id}</td>
-        <td>${new Date(q.created_at).toLocaleDateString()}</td>
-        <td><button class="manage-options" data-id="${
-					q.id
-				}"><i class="fas fa-list"></i> Варианты</button></td>
-        <td>
-          <button class="save-question" data-id="${
-						q.id
-					}"><i class="fas fa-save"></i> Сохранить</button>
-          <button class="del-question" data-id="${
-						q.id
-					}"><i class="fas fa-trash"></i> Удалить</button>
-        </td>`
-			tbody.appendChild(tr)
-			const trOpts = document.createElement('tr')
-			trOpts.classList.add('options-row')
-			trOpts.dataset.qid = q.id
-			trOpts.style.display = 'none'
-			trOpts.innerHTML = `
-        <td colspan="7">
-          <div class="options-wrapper">
-            <table class="options-table">
-              <thead><tr><th>Вариант</th><th>Правильный?</th><th>Действия</th></tr></thead>
-              <tbody id="opts-${q.id}"></tbody>
-            </table>
-            <div class="option-form">
-              <input type="text" class="new-opt-text" placeholder="Новый вариант">
-              <input type="checkbox" class="new-opt-correct">
-              <button class="save-new-option" data-id="${q.id}"><i class="fas fa-plus"></i></button>
-            </div>
-          </div>
-        </td>`
-			tbody.appendChild(trOpts)
-		})
-	} catch {
-		console.error('Ошибка загрузки вопросов')
-	}
-}
-
-// -----------------------
-// loadOptions
-// -----------------------
-async function loadOptions(questionId) {
-	const tbodyOpts = document.getElementById(`opts-${questionId}`)
-	tbodyOpts.innerHTML = ''
-	try {
-		const res = await fetch(`/api/teacher/options?question_id=${questionId}`, {
-			credentials: 'include',
-		})
-		if (!res.ok) throw ''
-		const opts = await res.json()
-		opts.forEach(o => {
-			const tr = document.createElement('tr')
-			tr.innerHTML = `
-        <td><input class="edit-opt-text" data-id="${o.id}" value="${
-				o.option_text
-			}"></td>
-        <td><input type="checkbox" class="edit-opt-correct" data-id="${o.id}"${
-				o.is_correct ? ' checked' : ''
-			}></td>
-        <td>
-          <button class="save-option" data-id="${
-						o.id
-					}"><i class="fas fa-save"></i></button>
-          <button class="del-option" data-id="${
-						o.id
-					}"><i class="fas fa-trash"></i></button>
-        </td>`
-			tbodyOpts.appendChild(tr)
-		})
-	} catch {
-		console.error('Ошибка загрузки вариантов')
-	}
-}
+document.addEventListener('DOMContentLoaded', () => {
+	loadUserIcon()
+	updateToggleIcon(document.documentElement.getAttribute('data-theme'))
+	if (document.getElementById('teacherCoursesBody')) initCourses()
+	if (document.getElementById('testsBody')) initTests()
+	if (document.getElementById('questionsBody')) initQuestions()
+})

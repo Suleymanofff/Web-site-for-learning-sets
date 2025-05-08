@@ -211,6 +211,10 @@ func main() {
 		"/api/tests/",
 		RequireAnyRole([]string{"admin", "teacher", "student"}, http.HandlerFunc(GetTestQuestions)),
 	)
+	apiMux.Handle(
+		"/api/teacher/questions/set_open_answer",
+		RequireAnyRole([]string{"admin", "teacher", "student"}, http.HandlerFunc(teacherSetOpenAnswerHandler)),
+	)
 
 	apiMux.Handle("/api/theory/", RequireAnyRole(
 		[]string{"admin", "teacher", "student"},

@@ -14,7 +14,7 @@
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo" onclick="navigate('index.html')">Set Learn</div>
+			<div class="logo" onclick="navigate('index.html')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="index.html">Панель учителя</a>
 				<a href="courses.html">Курсы</a>
@@ -42,14 +42,24 @@
 					placeholder="Текст вопроса"
 					required
 				/>
-				<select name="question_type">
+
+				<select name="question_type" id="newQuestionType">
 					<option value="open">Открытый</option>
-					<option value="closed">Закрытый</option>
+					<option value="closed" selected>Закрытый</option>
 				</select>
-				<label>
+				<label id="multiAnswerLabel" class="multi-answer-label">
 					<input type="checkbox" name="multiple_choice" />
 					Несколько ответов
 				</label>
+
+				<input
+					type="text"
+					name="correct_answer_text"
+					id="newAnswerInput"
+					placeholder="Правильный ответ (для открытых)"
+					style="display: none"
+				/>
+
 				<button type="submit"><i class="fas fa-plus"></i> Добавить</button>
 			</form>
 
@@ -60,13 +70,15 @@
 							<th>Вопрос</th>
 							<th>Тип</th>
 							<th>Несколько</th>
-							<th>Тест ID</th>
-							<th>Дата создания</th>
-							<th>Варианты</th>
+							<th>Тест ID</th>
+							<th>Дата создания</th>
+							<th>Ответ / Варианты</th>
 							<th>Действия</th>
 						</tr>
 					</thead>
-					<tbody id="questionsBody"></tbody>
+					<tbody id="questionsBody">
+						<!-- Здесь JS динамически создаёт строки вопросов и их варианты -->
+					</tbody>
 				</table>
 			</div>
 		</main>

@@ -155,6 +155,7 @@ body {
 	border-radius: var(--radius);
 	background: var(--card-bg);
 	transition: border-color var(--trans);
+	color: var(--text);
 }
 .course-form input:focus,
 .course-form select:focus {
@@ -233,6 +234,7 @@ body {
 
 /* CRUD BUTTONS */
 button.save-course,
+button.save-open-answer,
 button.save-test,
 button.save-question,
 button.save-option,
@@ -257,6 +259,7 @@ button.manage-options:hover {
 }
 button.del-course,
 button.del-test,
+button.delete-open-answer,
 button.del-question,
 button.del-option {
 	background: transparent;
@@ -277,6 +280,7 @@ button.del-option:hover {
 }
 
 /* EDITABLE FIELDS */
+.edit-opt-text,
 input.edit-text {
 	width: 100%;
 	padding: var(--sp-xs) var(--sp-sm);
@@ -298,6 +302,7 @@ select.edit-type {
 	-webkit-appearance: none;
 	-moz-appearance: none;
 	appearance: none;
+	color: var(--text);
 	padding: var(--sp-xs) var(--sp-sm);
 	background: var(--card-bg)
 		url("data:image/svg+xml;charset=UTF-8,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M0 0l5 6l5-6' stroke='%23999' stroke-width='1.2'/%3E%3C/svg%3E")
@@ -324,6 +329,7 @@ input.edit-multi[type='checkbox'] {
 }
 
 .options-row .options-wrapper {
+	/* display: none; */
 	padding: var(--sp-sm);
 	margin-top: var(--sp-md);
 	background: var(--bg);
@@ -336,7 +342,14 @@ input.edit-multi[type='checkbox'] {
 	border-collapse: collapse;
 	margin-bottom: var(--sp-sm);
 }
-.options-table th,
+.options-table th {
+	background-color: var(--primary);
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	text-align: left;
+	white-space: nowrap;
+}
+
 .options-table td {
 	padding: var(--sp-xs) var(--sp-sm);
 	border: 1px solid var(--border);
@@ -410,11 +423,6 @@ input.edit-multi[type='checkbox'] {
 }
 .options-wrapper table.options-table tbody tr:nth-child(even) {
 	background: var(--border);
-}
-
-/* hover-эффект */
-.options-wrapper table.options-table tbody tr:hover {
-	background: rgba(79, 70, 229, 0.1);
 }
 
 /* скругляем уголки последней строки */
@@ -760,6 +768,40 @@ table.variant-table thead {
 	opacity: 1 !important;
 	visibility: visible !important;
 	display: table-header-group !important;
+}
+
+/* Обёртка, чтобы кнопки и поле располагались аккуратно */
+.open-answer-wrapper {
+	display: flex;
+	flex-wrap: wrap; /* Перенос строк, если места мало */
+	gap: var(--sp-sm); /* Расстояние между элементами */
+	align-items: center; /* Выравнивание по центру по вертикали */
+}
+
+/* Сама текстовая область */
+.open-answer-input {
+	flex: 1; /* Занимает всё доступное место */
+	min-width: 200px; /* Минимальная ширина для удобства */
+	max-width: 400px; /* Максимальная ширина */
+	width: 100%; /* Чтобы flex:1 работал корректно */
+	box-sizing: border-box; /* Включаем padding и border в ширину */
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--bg);
+	color: var(--text);
+	transition: border-color var(--trans), background var(--trans),
+		color var(--trans);
+}
+
+.checkbox-disabled {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.multi-answer-label.checkbox-disabled {
+	opacity: 0.4;
+	pointer-events: none;
 }
 
 /* ======= END MODAL STYLES ======= */

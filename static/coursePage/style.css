@@ -179,3 +179,14 @@ body {
 .card button:hover {
 	filter: brightness(0.9);
 }
+
+/* Дополнительный отступ для тест‑карточек */
+.test-card {
+	display: flex;
+	flex-direction: column;
+}
+.card.info {
+	font-size: 0.9rem;
+	color: var(--text-muted);
+	margin-bottom: var(--sp-sm);
+}

@@ -53,13 +53,30 @@ function updateToggleIcon(theme) {
 }
 async function loadCourses() {
 	const container = document.querySelector('.courses-list')
+	const searchInput = document.getElementById('course-search')
+	const suggestions = document.getElementById('suggestions')
+	const wrapper = container.parentNode
+
 	try {
 		const res = await fetch('/api/courses', { credentials: 'same-origin' })
 		if (!res.ok) throw new Error(`Ошибка: ${res.status}`)
 		const courses = await res.json()
 
-		container.innerHTML = ''
-		courses.forEach(course => {
+		let expanded = false
+		const VISIBLE_COUNT = 4
+		let filteredCourses = courses
+
+		// Кнопка "Показать больше / Свернуть"
+		const btn = document.createElement('button')
+		btn.id = 'toggle-courses'
+		wrapper.appendChild(btn)
+		btn.addEventListener('click', () => {
+			expanded = !expanded
+			renderCourses()
+		})
+
+		// Функция рендера карточки
+		function renderCard(course) {
 			const card = document.createElement('div')
 			card.className = 'course-card'
 			card.innerHTML = `
@@ -69,7 +86,124 @@ async function loadCourses() {
         <button onclick="navigate('/static/coursePage/index.html?course=${course.id}')">Открыть</button>
       `
 			container.appendChild(card)
+		}
+
+		// Рендер списка и кнопки
+		function renderCourses() {
+			container.innerHTML = ''
+			const list = expanded
+				? filteredCourses
+				: filteredCourses.slice(0, VISIBLE_COUNT)
+			list.forEach(renderCard)
+
+			if (filteredCourses.length > VISIBLE_COUNT) {
+				btn.style.display = 'block'
+				btn.textContent = expanded ? 'Свернуть' : 'Показать больше'
+			} else {
+				btn.style.display = 'none'
+			}
+		}
+
+		// Сброс фильтрации при пустом вводе + Enter
+		function resetSearch() {
+			filteredCourses = courses
+			expanded = false
+			renderCourses()
+		}
+
+		// Применение поиска по точному совпадению
+		function applySearch(text) {
+			const match = courses.find(
+				c => c.title.toLowerCase() === text.toLowerCase()
+			)
+			if (match) {
+				filteredCourses = [match]
+				expanded = true
+				renderCourses()
+			} else {
+				container.innerHTML = `<p>К сожалению такого курса нет.</p>`
+				btn.style.display = 'none'
+			}
+		}
+
+		// Обновление списка подсказок (только те, что начинаются на введённый текст)
+		function updateSuggestions(text) {
+			suggestions.innerHTML = ''
+			if (!text) return
+			const prefix = text.toLowerCase()
+			const matches = courses
+				.map(c => c.title)
+				.filter(title => title.toLowerCase().startsWith(prefix))
+			matches.forEach(title => {
+				const li = document.createElement('li')
+				li.textContent = title
+				suggestions.appendChild(li)
+			})
+			currentIdx = -1
+		}
+
+		// Навигация по подсказкам стрелками
+		let currentIdx = -1
+		searchInput.addEventListener('keydown', e => {
+			const items = suggestions.querySelectorAll('li')
+
+			if (e.key === 'ArrowDown') {
+				e.preventDefault()
+				if (items.length === 0) return
+				currentIdx = Math.min(currentIdx + 1, items.length - 1)
+				highlight(items)
+			} else if (e.key === 'ArrowUp') {
+				e.preventDefault()
+				if (items.length === 0) return
+				currentIdx = Math.max(currentIdx - 1, 0)
+				highlight(items)
+			} else if (e.key === 'Enter') {
+				e.preventDefault()
+				suggestions.innerHTML = ''
+
+				// 1) Если выделена подсказка — выбираем её
+				if (currentIdx >= 0 && items[currentIdx]) {
+					const selectedTitle = items[currentIdx].textContent
+					searchInput.value = selectedTitle
+					applySearch(selectedTitle)
+
+					// 2) Если поле пустое — сбрасываем
+				} else if (!searchInput.value.trim()) {
+					resetSearch()
+
+					// 3) Иначе — ищем по введённому тексту
+				} else {
+					applySearch(searchInput.value.trim())
+				}
+			}
 		})
+
+		function highlight(items) {
+			items.forEach((li, idx) => {
+				li.classList.toggle('active', idx === currentIdx)
+			})
+			if (currentIdx >= 0) {
+				items[currentIdx].scrollIntoView({ block: 'nearest' })
+			}
+		}
+
+		// Клик по подсказке мышью
+		suggestions.addEventListener('click', e => {
+			if (e.target.tagName === 'LI') {
+				const title = e.target.textContent
+				searchInput.value = title
+				suggestions.innerHTML = ''
+				applySearch(title)
+			}
+		})
+
+		// Автоподсказки при вводе
+		searchInput.addEventListener('input', () => {
+			updateSuggestions(searchInput.value.trim())
+		})
+
+		// Инициализация
+		resetSearch()
 	} catch (err) {
 		container.innerHTML = `<p>Не удалось загрузить курсы: ${err.message}</p>`
 	}

@@ -227,6 +227,29 @@ body {
 	transition: width 0.3s ease;
 }
 
+/* Стили для поля открытого ответа в панели учителя */
+.open-question-input {
+	width: 100%;
+	max-width: 600px; /* ограничивает растяжение */
+	min-height: 60px; /* минимальная высота */
+	padding: var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	font-size: 1rem;
+	font-family: inherit;
+	resize: vertical; /* разрешает только вертикальное растяжение */
+	background: var(--bg);
+	color: var(--text);
+	box-sizing: border-box; /* учитывает padding/border в width */
+	transition: border-color var(--trans), background var(--trans),
+		color var(--trans);
+}
+
+/* Если нужно, можно ограничить максимальную высоту */
+.open-question-input {
+	max-height: 200px;
+}
+
 /* RESPONSIVE */
 @media (max-width: 600px) {
 	.navbar {

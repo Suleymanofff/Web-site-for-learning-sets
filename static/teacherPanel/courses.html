@@ -32,6 +32,12 @@
 		<main class="page-content">
 			<h1>Управление курсами</h1>
 
+			<form id="newTeacherCourseForm" class="course-form">
+				<input name="title" placeholder="Название курса" required />
+				<input name="description" placeholder="Описание курса" required />
+				<button type="submit"><i class="fas fa-plus"></i> Добавить</button>
+			</form>
+
 			<div class="table-wrapper">
 				<table id="teacherCoursesTable">
 					<thead>
@@ -45,12 +51,6 @@
 					<tbody id="teacherCoursesBody"></tbody>
 				</table>
 			</div>
-
-			<form id="newTeacherCourseForm" class="course-form">
-				<input name="title" placeholder="Название курса" required />
-				<input name="description" placeholder="Описание курса" required />
-				<button type="submit"><i class="fas fa-plus"></i> Добавить</button>
-			</form>
 		</main>
 	</body>
 </html>

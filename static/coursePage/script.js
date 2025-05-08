@@ -7,6 +7,11 @@ function getCourseId() {
 	return params.get('course') || params.get('id')
 }
 
+function getToken() {
+	const match = document.cookie.match(/token=([^;]+)/)
+	return match ? match[1] : null
+}
+
 async function loadUserIcon() {
 	try {
 		const res = await fetch('/api/profile', { credentials: 'same-origin' })
@@ -61,15 +66,11 @@ function initThemeToggle() {
 	}
 }
 
-function getToken() {
-	const match = document.cookie.match(/token=([^;]+)/)
-	return match ? match[1] : null
-}
-
 async function loadCoursePage() {
 	const courseId = getCourseId()
 	if (!courseId) return
 
+	// Загружаем заголовок курса
 	try {
 		const res = await fetch(`/api/courses/${courseId}`, {
 			credentials: 'same-origin',
@@ -89,7 +90,7 @@ async function loadCoursePage() {
 
 async function loadTheory(courseId) {
 	const container = document.getElementById('theory-list')
-	container.innerHTML = 'Загрузка теории...'
+	container.innerHTML = 'Загрузка теории…'
 	try {
 		const res = await fetch(`/api/courses/${courseId}/theory`, {
 			headers: { Authorization: `Bearer ${getToken()}` },
@@ -102,20 +103,21 @@ async function loadTheory(courseId) {
 			const div = document.createElement('div')
 			div.className = 'card'
 			div.innerHTML = `
-				<h3>${item.title}</h3>
-				<p>${item.summary}</p>
-				<button onclick="navigate('/static/theory/index.html?topic=${item.id}')">Читать</button>
-			`
+        <h3>${item.title}</h3>
+        <p>${item.summary}</p>
+        <button onclick="navigate('/static/theory/index.html?topic=${item.id}')">Читать</button>
+      `
 			container.appendChild(div)
 		})
 	} catch (err) {
+		console.error(err)
 		container.textContent = 'Ошибка при загрузке теории'
 	}
 }
 
 async function loadTests(courseId) {
 	const container = document.getElementById('tests-list')
-	container.innerHTML = 'Загрузка тестов...'
+	container.innerHTML = 'Загрузка тестов…'
 	try {
 		const res = await fetch(`/api/courses/${courseId}/tests`, {
 			headers: { Authorization: `Bearer ${getToken()}` },
@@ -126,16 +128,34 @@ async function loadTests(courseId) {
 			console.error('Ошибка загрузки тестов:', res.status, text)
 			throw new Error('Ошибка загрузки тестов')
 		}
-		const data = await res.json()
+		const tests = await res.json()
+
 		container.innerHTML = ''
-		data.forEach(test => {
+		if (tests.length === 0) {
+			container.textContent = 'Тестов пока нет.'
+			return
+		}
+
+		tests.forEach(test => {
 			const div = document.createElement('div')
-			div.className = 'card'
+			div.className = 'card test-card'
 			div.innerHTML = `
-				<h3>${test.title}</h3>
-				<p>Вопросов: ${test.question_count}</p>
-				<button onclick="navigate('/static/questions/index.html?test=${test.id}')">Пройти тест</button>
-			`
+        <h3>${test.title}</h3>
+        ${test.description ? `<p>${test.description}</p>` : ''}
+        <div class="info">Вопросов: ${test.question_count}</div>
+        ${
+					test.created_at
+						? `<div class="info">Создано: ${new Date(
+								test.created_at
+						  ).toLocaleDateString()}</div>`
+						: ''
+				}
+        <button onclick="navigate('/static/questions/index.html?test=${
+					test.id
+				}')">
+          Пройти тест
+        </button>
+      `
 			container.appendChild(div)
 		})
 	} catch (err) {

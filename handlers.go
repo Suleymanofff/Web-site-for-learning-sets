@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -37,15 +38,20 @@ type TestInfo struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
-// QuestionInfo — данные вопроса для панели учителя
 type QuestionInfo struct {
-	ID             int          `json:"id"`
-	TestID         int          `json:"test_id"`
-	QuestionText   string       `json:"question_text"`
-	QuestionType   string       `json:"question_type"`   // "open" или "closed"
-	MultipleChoice bool         `json:"multiple_choice"` // true если допускается несколько
-	CreatedAt      time.Time    `json:"created_at"`
-	Options        []OptionInfo `json:"options,omitempty"` // пусто для open
+	ID                int            `json:"id"`
+	TestID            int            `json:"test_id"`
+	QuestionText      string         `json:"question_text"`
+	QuestionType      string         `json:"question_type"`
+	MultipleChoice    bool           `json:"multiple_choice"`
+	CreatedAt         time.Time      `json:"created_at"`
+	CorrectAnswerText sql.NullString `json:"-"` // временно скрываем
+	Options           []OptionInfo   `json:"options,omitempty"`
+}
+
+type QuestionInfoOut struct {
+	QuestionInfo
+	CorrectAnswerText string `json:"correct_answer_text,omitempty"`
 }
 
 type OptionInfo struct {
@@ -54,6 +60,15 @@ type OptionInfo struct {
 	OptionText string    `json:"option_text"`
 	IsCorrect  bool      `json:"is_correct"`
 	CreatedAt  time.Time `json:"created_at"`
+}
+
+type teacherQuestionRequest struct {
+	ID                int    `json:"id,omitempty"`
+	TestID            int    `json:"test_id"`
+	QuestionText      string `json:"question_text"`
+	QuestionType      string `json:"question_type"`
+	MultipleChoice    bool   `json:"multiple_choice"`
+	CorrectAnswerText string `json:"correct_answer_text"`
 }
 
 // adminUsersHandler — GET/PUT/DELETE: список, обновление роли и удаление пользователя
@@ -549,39 +564,44 @@ func teacherTestsHandler(w http.ResponseWriter, r *http.Request) {
 
 // teacherQuestionsHandler — CRUD вопросов для тестов текущего учителя
 func teacherQuestionsHandler(w http.ResponseWriter, r *http.Request) {
+	// 1) Проверка авторизации и получение teacherID из токена
 	claims := getClaims(r.Context())
 	if claims == nil {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	// Находим teacherID
 	var teacherID int
-	if err := db.QueryRow("SELECT id FROM users WHERE email=$1", claims.Email).
-		Scan(&teacherID); err != nil {
+	if err := db.QueryRow(
+		"SELECT id FROM users WHERE email = $1",
+		claims.Email,
+	).Scan(&teacherID); err != nil {
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return
 	}
 
 	switch r.Method {
-	// GET /api/teacher/questions?test_id=...
+	// GET /api/teacher/questions?test_id={id}
 	case http.MethodGet:
+		// 2) Получаем test_id из query
 		testIDStr := r.URL.Query().Get("test_id")
 		testID, err := strconv.Atoi(testIDStr)
 		if err != nil {
 			http.Error(w, "Invalid test_id", http.StatusBadRequest)
 			return
 		}
-		// Проверяем, что тест принадлежит учителю
+		// 3) Проверяем, что тест принадлежит учителю
 		var owner int
-		if err := db.QueryRow(
-			"SELECT c.teacher_id FROM tests t JOIN courses c ON c.id=t.course_id WHERE t.id=$1",
+		err = db.QueryRow(
+			"SELECT c.teacher_id FROM tests t JOIN courses c ON c.id = t.course_id WHERE t.id = $1",
 			testID,
-		).Scan(&owner); err != nil || owner != teacherID {
+		).Scan(&owner)
+		if err != nil || owner != teacherID {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
+		// 4) Запрашиваем вопросы вместе с correct_answer_text
 		rows, err := db.Query(`
-            SELECT id, test_id, question_text, created_at
+            SELECT id, test_id, question_text, question_type, multiple_choice, correct_answer_text, created_at
             FROM questions
             WHERE test_id = $1
             ORDER BY created_at
@@ -592,69 +612,94 @@ func teacherQuestionsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer rows.Close()
 
-		var list []QuestionInfo
+		var out []QuestionInfoOut
 		for rows.Next() {
 			var q QuestionInfo
-			if err := rows.Scan(&q.ID, &q.TestID, &q.QuestionText, &q.CreatedAt); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
+			if err := rows.Scan(
+				&q.ID,
+				&q.TestID,
+				&q.QuestionText,
+				&q.QuestionType,
+				&q.MultipleChoice,
+				&q.CorrectAnswerText,
+				&q.CreatedAt,
+			); err != nil {
+				log.Println("Scan question error:", err)
+				continue
 			}
-			list = append(list, q)
+			// разворачиваем NullString в чистую строку
+			out = append(out, QuestionInfoOut{
+				QuestionInfo:      q,
+				CorrectAnswerText: q.CorrectAnswerText.String,
+			})
 		}
+
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(list)
+		json.NewEncoder(w).Encode(out)
 
 	// POST /api/teacher/questions
 	case http.MethodPost:
-		var req struct {
-			TestID       int    `json:"test_id"`
-			QuestionText string `json:"question_text"`
-		}
+		var req teacherQuestionRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid input", http.StatusBadRequest)
 			return
 		}
-		// Проверяем владение тестом
+		// подтверждаем, что тест принадлежит учителю
 		var owner2 int
-		if err := db.QueryRow(
-			"SELECT c.teacher_id FROM tests t JOIN courses c ON c.id=t.course_id WHERE t.id=$1",
+		err := db.QueryRow(
+			"SELECT c.teacher_id FROM tests t JOIN courses c ON c.id = t.course_id WHERE t.id = $1",
 			req.TestID,
-		).Scan(&owner2); err != nil || owner2 != teacherID {
+		).Scan(&owner2)
+		if err != nil || owner2 != teacherID {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
+		// вставляем вместе с correct_answer_text
 		var newID int
-		if err := db.QueryRow(
-			`INSERT INTO questions (test_id, question_text)
-             VALUES ($1,$2) RETURNING id`,
-			req.TestID, req.QuestionText,
-		).Scan(&newID); err != nil {
+		err = db.QueryRow(
+			`INSERT INTO questions
+             (test_id, question_text, question_type, multiple_choice, correct_answer_text)
+             VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+			req.TestID, req.QuestionText, req.QuestionType, req.MultipleChoice, req.CorrectAnswerText,
+		).Scan(&newID)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]int{"id": newID})
 
 	// PUT /api/teacher/questions
 	case http.MethodPut:
-		var req QuestionInfo
+		var req teacherQuestionRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid input", http.StatusBadRequest)
 			return
 		}
-		// Проверяем владение
+		// проверяем право на обновление
 		var owner3 int
-		if err := db.QueryRow(
-			"SELECT c.teacher_id FROM questions q JOIN tests t ON t.id=q.test_id JOIN courses c ON c.id=t.course_id WHERE q.id=$1",
-			req.ID,
-		).Scan(&owner3); err != nil || owner3 != teacherID {
+		err := db.QueryRow(`
+            SELECT c.teacher_id
+            FROM questions q
+            JOIN tests t ON t.id = q.test_id
+            JOIN courses c ON c.id = t.course_id
+            WHERE q.id = $1
+        `, req.ID).Scan(&owner3)
+		if err != nil || owner3 != teacherID {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
+		// обновляем ещё и correct_answer_text
 		res, err := db.Exec(
-			"UPDATE questions SET question_text=$1 WHERE id=$2",
-			req.QuestionText, req.ID,
+			`UPDATE questions
+             SET question_text = $1,
+                 question_type = $2,
+                 multiple_choice = $3,
+                 correct_answer_text = $4
+             WHERE id = $5`,
+			req.QuestionText, req.QuestionType, req.MultipleChoice, req.CorrectAnswerText, req.ID,
 		)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -675,21 +720,22 @@ func teacherQuestionsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid input", http.StatusBadRequest)
 			return
 		}
+		// проверяем права на удаление
 		var owner4 int
-		if err := db.QueryRow(
-			"SELECT c.teacher_id FROM questions q JOIN tests t ON t.id=q.test_id JOIN courses c ON c.id=t.course_id WHERE q.id=$1",
-			req.ID,
-		).Scan(&owner4); err != nil || owner4 != teacherID {
+		err := db.QueryRow(`
+            SELECT c.teacher_id
+            FROM questions q
+            JOIN tests t ON t.id = q.test_id
+            JOIN courses c ON c.id = t.course_id
+            WHERE q.id = $1
+        `, req.ID).Scan(&owner4)
+		if err != nil || owner4 != teacherID {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
-		res, err := db.Exec("DELETE FROM questions WHERE id=$1", req.ID)
+		_, err = db.Exec("DELETE FROM questions WHERE id = $1", req.ID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if cnt, _ := res.RowsAffected(); cnt == 0 {
-			http.Error(w, "Question not found", http.StatusNotFound)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -1003,10 +1049,6 @@ func GetCourseByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET /api/courses/{courseID}/theory
-// старый вариант (несуществующая таблица theories):
-// SELECT id, title, content FROM theories WHERE course_id = $1
-
 // Новый вариант — правильный, для таблицы theory:
 func GetTheory(w http.ResponseWriter, r *http.Request) {
 	// разбор пути
@@ -1137,12 +1179,10 @@ func GetTestQuestions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2) Запрашиваем все вопросы этого теста
-	rows, err := db.Query(`
-        SELECT id, test_id, question_text, question_type, multiple_choice, created_at
-        FROM questions
-        WHERE test_id = $1
-        ORDER BY id
-    `, testID)
+	rows, err := db.Query(`SELECT id, test_id, question_text, question_type, multiple_choice, correct_answer_text, created_at
+		FROM questions
+		WHERE test_id = $1
+		ORDER BY id`, testID)
 	if err != nil {
 		http.Error(w, "DB error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -1150,31 +1190,27 @@ func GetTestQuestions(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	var questions []QuestionInfo
-
 	for rows.Next() {
 		var q QuestionInfo
-		// Заполняем поля, соответствующие QuestionInfo
 		if err := rows.Scan(
 			&q.ID,
 			&q.TestID,
 			&q.QuestionText,
 			&q.QuestionType,
 			&q.MultipleChoice,
+			&q.CorrectAnswerText,
 			&q.CreatedAt,
 		); err != nil {
-			// если вдруг одна строка упала — пропускаем её
 			log.Println("Scan question error:", err)
 			continue
 		}
 
 		// 3) Для закрытых вопросов подгружаем опции
 		if q.QuestionType == "closed" {
-			optRows, err := db.Query(`
-                SELECT id, question_id, option_text, is_correct, created_at
-                FROM options
-                WHERE question_id = $1
-                ORDER BY id
-            `, q.ID)
+			optRows, err := db.Query(`SELECT id, question_id, option_text, is_correct, created_at
+				FROM options
+				WHERE question_id = $1
+				ORDER BY id`, q.ID)
 			if err != nil {
 				log.Println("Options query error:", err)
 			} else {
@@ -1190,7 +1226,7 @@ func GetTestQuestions(w http.ResponseWriter, r *http.Request) {
 						log.Println("Scan option error:", err)
 						continue
 					}
-					q.Options = append(q.Options, o) // теперь тип совпадает
+					q.Options = append(q.Options, o)
 				}
 				optRows.Close()
 			}
@@ -1199,9 +1235,18 @@ func GetTestQuestions(w http.ResponseWriter, r *http.Request) {
 		questions = append(questions, q)
 	}
 
-	// 4) Отдаём JSON
+	// 4) Формируем выходную структуру
+	var result []QuestionInfoOut
+	for _, q := range questions {
+		result = append(result, QuestionInfoOut{
+			QuestionInfo:      q,
+			CorrectAnswerText: q.CorrectAnswerText.String,
+		})
+	}
+
+	// 5) Отдаём JSON
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(questions); err != nil {
+	if err := json.NewEncoder(w).Encode(result); err != nil {
 		log.Println("Encode questions error:", err)
 	}
 }
@@ -1273,4 +1318,71 @@ func GetTheoryWithTests(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(theory)
+}
+
+// POST /api/teacher/questions/set_open_answer
+// POST /api/teacher/questions/set_open_answer
+func teacherSetOpenAnswerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	// Авторизация
+	claims := getClaims(r.Context())
+	if claims == nil {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	var teacherID int
+	if err := db.QueryRow(
+		"SELECT id FROM users WHERE email=$1",
+		claims.Email,
+	).Scan(&teacherID); err != nil {
+		http.Error(w, "User not found", http.StatusInternalServerError)
+		return
+	}
+
+	// Парсим JSON тело
+	var data struct {
+		ID     int    `json:"id"`
+		Answer string `json:"answer"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	qid := data.ID
+	answer := data.Answer
+
+	// Проверяем владельца вопроса
+	var owner int
+	err := db.QueryRow(`
+        SELECT c.teacher_id
+        FROM questions q
+        JOIN tests t ON t.id = q.test_id
+        JOIN courses c ON c.id = t.course_id
+        WHERE q.id = $1
+    `, qid).Scan(&owner)
+	if err != nil {
+		http.Error(w, "Question not found", http.StatusNotFound)
+		return
+	}
+	if owner != teacherID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Обновляем ответ
+	if _, err := db.Exec(
+		`UPDATE questions
+           SET correct_answer_text = $1
+         WHERE id = $2`,
+		answer, qid,
+	); err != nil {
+		http.Error(w, "DB error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Возвращаем 200 OK (или 204 No Content)
+	w.WriteHeader(http.StatusOK)
 }

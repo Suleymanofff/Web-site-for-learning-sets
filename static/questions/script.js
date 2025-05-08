@@ -58,6 +58,48 @@ async function loadUserIcon() {
 	}
 }
 
+function levenshtein(a, b) {
+	const an = a.length
+	const bn = b.length
+	if (an === 0) return bn
+	if (bn === 0) return an
+
+	const matrix = []
+
+	for (let i = 0; i <= bn; i++) {
+		matrix[i] = [i]
+	}
+	for (let j = 0; j <= an; j++) {
+		matrix[0][j] = j
+	}
+
+	for (let i = 1; i <= bn; i++) {
+		for (let j = 1; j <= an; j++) {
+			if (b.charAt(i - 1) === a.charAt(j - 1)) {
+				matrix[i][j] = matrix[i - 1][j - 1]
+			} else {
+				matrix[i][j] = Math.min(
+					matrix[i - 1][j - 1] + 1, // замена
+					matrix[i][j - 1] + 1, // вставка
+					matrix[i - 1][j] + 1 // удаление
+				)
+			}
+		}
+	}
+
+	return matrix[bn][an]
+}
+
+function compareTextAnswers(userInput, correct, threshold = 80) {
+	const u = userInput.trim().toLowerCase()
+	const c = correct.trim().toLowerCase()
+	if (!c) return false
+	const distance = levenshtein(u, c)
+	const maxLen = Math.max(u.length, c.length)
+	const similarity = (1 - distance / maxLen) * 100
+	return similarity >= threshold
+}
+
 // Показать popup с результатом
 function showPopup(score, total) {
 	const overlay = document.getElementById('popupOverlay')
@@ -122,8 +164,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 		} else {
 			const ta = document.createElement('textarea')
 			ta.name = `q_${q.id}`
+			ta.classList.add('open-question-input')
 			wrapper.appendChild(ta)
 		}
+
 		form.appendChild(wrapper)
 	})
 
@@ -148,8 +192,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 				) {
 					score++
 				}
-			} else {
-				// для открытых вопросов можно договориться о ручной проверке
+			} else if (q.question_type === 'open') {
+				const answer = form.elements[name].value.trim()
+				if (compareTextAnswers(answer, q.correct_answer_text, 80)) {
+					score++
+				}
 			}
 		})
 
