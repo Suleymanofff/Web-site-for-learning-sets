@@ -260,6 +260,7 @@ body {
 	border: 2px solid var(--primary);
 	border-radius: var(--radius);
 	outline: none;
+	color: #1f2937;
 }
 
 #suggestions {
@@ -281,6 +282,7 @@ body {
 #suggestions li {
 	padding: 8px 12px;
 	cursor: pointer;
+	color: #1f2937;
 }
 #suggestions li.active,
 #suggestions li:hover {

@@ -9,12 +9,21 @@ function getCourseId() {
 
 function getToken() {
 	const match = document.cookie.match(/token=([^;]+)/)
-	return match ? match[1] : null
+	return match ? match[1] : ''
+}
+
+// ✅ Безопасное добавление заголовка Authorization
+function authHeaders() {
+	const token = getToken()
+	return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 async function loadUserIcon() {
 	try {
-		const res = await fetch('/api/profile', { credentials: 'same-origin' })
+		const res = await fetch('/api/profile', {
+			credentials: 'same-origin',
+			headers: authHeaders(),
+		})
 		if (!res.ok) return null
 		const user = await res.json()
 		if (user.avatar_path) {
@@ -66,22 +75,30 @@ function initThemeToggle() {
 	}
 }
 
+async function fetchCourses() {
+	const res = await fetch('/api/courses', { credentials: 'same-origin' })
+	if (!res.ok) throw new Error(`Ошибка ${res.status}`)
+	return await res.json()
+}
+
 async function loadCoursePage() {
 	const courseId = getCourseId()
 	if (!courseId) return
 
-	// Загружаем заголовок курса
+	const titleElem = document.getElementById('course-title')
+	titleElem.textContent = 'Загрузка курса…'
+
 	try {
-		const res = await fetch(`/api/courses/${courseId}`, {
-			credentials: 'same-origin',
-		})
-		if (!res.ok) throw new Error(`Status ${res.status}`)
-		const course = await res.json()
-		document.getElementById('course-title').textContent = course.title
+		const courses = await fetchCourses() // грузим все курсы
+		const course = courses.find(c => String(c.id) === String(courseId)) // ищем нужный
+		if (course) {
+			titleElem.textContent = course.title
+		} else {
+			titleElem.textContent = 'Курс #' + courseId
+		}
 	} catch (err) {
-		console.error('Error loading course:', err)
-		document.getElementById('course-title').textContent =
-			'Ошибка загрузки курса'
+		console.error('Ошибка загрузки курсов:', err)
+		titleElem.textContent = 'Курс #' + courseId
 	}
 
 	await loadTheory(courseId)
@@ -90,48 +107,62 @@ async function loadCoursePage() {
 
 async function loadTheory(courseId) {
 	const container = document.getElementById('theory-list')
-	container.innerHTML = 'Загрузка теории…'
+	container.textContent = 'Загрузка теории…'
+
 	try {
 		const res = await fetch(`/api/courses/${courseId}/theory`, {
-			headers: { Authorization: `Bearer ${getToken()}` },
 			credentials: 'same-origin',
+			headers: authHeaders(),
 		})
-		if (!res.ok) throw new Error('Ошибка загрузки теории')
+		if (!res.ok) throw new Error(`Status ${res.status}`)
+
 		const data = await res.json()
 		container.innerHTML = ''
+
+		if (!Array.isArray(data) || !data.length) {
+			container.textContent = 'Темы теории отсутствуют'
+			return
+		}
+
 		data.forEach(item => {
 			const div = document.createElement('div')
 			div.className = 'card'
+
+			const textOnly = item.content.replace(/<[^>]+>/g, '')
+			const preview =
+				textOnly.length > 100 ? `${textOnly.slice(0, 40)}…` : textOnly
+
 			div.innerHTML = `
         <h3>${item.title}</h3>
-        <p>${item.summary}</p>
-        <button onclick="navigate('/static/theory/index.html?topic=${item.id}')">Читать</button>
+        ${preview ? `<p>${preview}</p>` : ''}
+        <button onclick="navigate('/static/theory/index.html?topic=${
+					item.id
+				}')">
+          Читать
+        </button>
       `
 			container.appendChild(div)
 		})
 	} catch (err) {
-		console.error(err)
+		console.error('loadTheory error:', err)
 		container.textContent = 'Ошибка при загрузке теории'
 	}
 }
 
 async function loadTests(courseId) {
 	const container = document.getElementById('tests-list')
-	container.innerHTML = 'Загрузка тестов…'
+	container.textContent = 'Загрузка тестов…'
+
 	try {
 		const res = await fetch(`/api/courses/${courseId}/tests`, {
-			headers: { Authorization: `Bearer ${getToken()}` },
 			credentials: 'same-origin',
+			headers: authHeaders(),
 		})
-		if (!res.ok) {
-			const text = await res.text()
-			console.error('Ошибка загрузки тестов:', res.status, text)
-			throw new Error('Ошибка загрузки тестов')
-		}
+		if (!res.ok) throw new Error(`Status ${res.status}`)
 		const tests = await res.json()
 
 		container.innerHTML = ''
-		if (tests.length === 0) {
+		if (!tests.length) {
 			container.textContent = 'Тестов пока нет.'
 			return
 		}
@@ -159,7 +190,7 @@ async function loadTests(courseId) {
 			container.appendChild(div)
 		})
 	} catch (err) {
-		console.error('Ошибка в loadTests:', err)
+		console.error('loadTests error:', err)
 		container.textContent = 'Ошибка при загрузке тестов'
 	}
 }

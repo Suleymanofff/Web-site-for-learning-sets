@@ -136,7 +136,7 @@ async function loadCourses() {
 	let allCourses = []
 	let filteredCourses = []
 
-	// Кнопка очистки
+	// ——— кнопка очистки поиска ———
 	const clearBtn = document.createElement('button')
 	clearBtn.type = 'button'
 	clearBtn.className = 'clear-search'
@@ -149,20 +149,22 @@ async function loadCourses() {
 		resetSearch()
 	})
 
-	// Отрисовка карточки
+	// ——— рендер одной карточки курса ———
 	function renderCard(course) {
 		const card = document.createElement('div')
 		card.className = 'course-card'
 		card.innerHTML = `
-			<h2>${course.title}</h2>
-			<p>${course.description}</p>
-			<div class="info">Тестов: ${course.test_count}</div>
-			<button onclick="navigate('/static/coursePage/index.html?course=${course.id}')">Открыть</button>
-		`
+		<h2>${course.title}</h2>
+		<p>${course.description}</p>
+		<div class="info">Тестов: ${course.test_count}</div>
+		<button onclick="navigate('/static/coursePage/index.html?course=${course.id}')">
+		  Открыть
+		</button>
+	  `
 		container.appendChild(card)
 	}
 
-	// Отрисовка списка
+	// ——— рендер списка и подстройка кнопки ———
 	function renderCourses() {
 		container.innerHTML = ''
 		const list = expanded
@@ -179,29 +181,26 @@ async function loadCourses() {
 		}
 	}
 
-	// Получение курсов с сервера (без поиска)
+	// ——— загрузка всех курсов ———
 	async function fetchCourses() {
 		const res = await fetch('/api/courses', { credentials: 'same-origin' })
 		if (!res.ok) throw new Error(`Ошибка ${res.status}`)
 		return await res.json()
 	}
 
-	// Сброс поиска
+	// ——— сброс поиска ———
 	function resetSearch() {
 		filteredCourses = allCourses
 		expanded = false
 		renderCourses()
 	}
 
-	// Поиск по локальному массиву
+	// ——— локальный поиск ———
 	function applySearch(text) {
-		const query = text.trim()
-		if (!query) {
-			resetSearch()
-			return
-		}
+		const q = text.trim()
+		if (!q) return resetSearch()
 
-		const results = filterCourses(allCourses, query)
+		const results = filterCourses(allCourses, q)
 		if (results.length) {
 			filteredCourses = results
 			expanded = true
@@ -212,7 +211,7 @@ async function loadCourses() {
 		}
 	}
 
-	// Подсказки
+	// ——— подсказки ———
 	function updateSuggestions(text) {
 		suggestions.innerHTML = ''
 		if (!text) {
@@ -220,10 +219,10 @@ async function loadCourses() {
 			return
 		}
 		const matches = filterCourses(allCourses, text).slice(0, 10)
-		matches.forEach((course, idx) => {
+		matches.forEach((course, i) => {
 			const li = document.createElement('li')
 			li.setAttribute('role', 'option')
-			li.id = `suggestion-${idx}`
+			li.id = `suggestion-${i}`
 			const re = new RegExp(`(${text})`, 'i')
 			li.innerHTML = course.title.replace(re, '<mark>$1</mark>')
 			suggestions.appendChild(li)
@@ -232,7 +231,6 @@ async function loadCourses() {
 		wrapper.setAttribute('aria-expanded', 'true')
 	}
 
-	// Подсветка подсказки
 	function highlight(items) {
 		items.forEach((li, idx) => {
 			li.classList.toggle('active', idx === currentIdx)
@@ -243,10 +241,9 @@ async function loadCourses() {
 		})
 	}
 
-	// Debounce
 	const debouncedSuggest = debounce(text => updateSuggestions(text), 300)
 
-	// Обработчики клавиш
+	// ——— обработчики клавиш ———
 	searchInput.addEventListener('keydown', e => {
 		const items = suggestions.querySelectorAll('li')
 		if (e.key === 'ArrowDown') {
@@ -278,7 +275,6 @@ async function loadCourses() {
 		}
 	})
 
-	// Клик по подсказке
 	suggestions.addEventListener('click', e => {
 		if (e.target.tagName === 'LI') {
 			const title = e.target.textContent
@@ -288,18 +284,16 @@ async function loadCourses() {
 		}
 	})
 
-	// По вводу
 	searchInput.addEventListener('input', e => {
-		const text = e.target.value.trim()
-		if (!text) {
+		const t = e.target.value.trim()
+		if (!t) {
 			suggestions.innerHTML = ''
 			wrapper.setAttribute('aria-expanded', 'false')
 			return
 		}
-		debouncedSuggest(text)
+		debouncedSuggest(t)
 	})
 
-	// Клики вне поля
 	document.addEventListener('click', e => {
 		if (!searchInput.contains(e.target) && !suggestions.contains(e.target)) {
 			suggestions.innerHTML = ''
@@ -308,18 +302,19 @@ async function loadCourses() {
 		}
 	})
 
-	// Кнопка "Показать больше"
-	const header = document.querySelector('.page-content h1')
+	// ——— кнопка "Показать больше" ———
 	const toggleBtn = document.createElement('button')
 	toggleBtn.id = 'toggle-courses'
+	toggleBtn.className = 'toggle-courses-btn'
 	toggleBtn.textContent = 'Показать больше'
 	toggleBtn.addEventListener('click', () => {
 		expanded = !expanded
 		renderCourses()
 	})
-	header.insertAdjacentElement('afterend', toggleBtn)
+	// встраиваем кнопку сразу **после** контейнера с карточками
+	container.insertAdjacentElement('afterend', toggleBtn)
 
-	// Загружаем все курсы и стартуем
+	// ——— стартуем загрузку ———
 	try {
 		allCourses = await fetchCourses()
 		filteredCourses = allCourses

@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Управление курсами — Админ‑панель</title>
+		<title>Управление группами — Админ-панель</title>
 		<script src="/static/js/theme-init.js"></script>
 		<link rel="stylesheet" href="/static/adminPanel/style.css" />
 		<link
@@ -14,13 +14,13 @@
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
-				<a href="index.html">Панель админа</a>
+				<a href="index.html" class="active">Панель админа</a>
 				<a href="users.html">Пользователи</a>
-				<a href="courses.html" class="active">Курсы</a>
-				<a href="groups.html">Группы</a>
+				<a href="courses.html">Курсы</a>
+				<a href="groups.html" class="active">Группы</a>
 			</nav>
 			<div class="actions">
 				<button id="theme-toggle" aria-label="Переключить тему"></button>
@@ -31,30 +31,33 @@
 		</header>
 
 		<main class="page-content">
-			<h1>Управление курсами</h1>
+			<h1>Управление группами</h1>
 
-			<form id="newCourseForm" class="course-form">
-				<input name="title" placeholder="Название курса" required />
-				<input name="description" placeholder="Описание курса" required />
-				<select name="teacher_id" required>
-					<option value="">— выберите преподавателя —</option>
-					<!-- JS добавит остальные -->
+			<!-- Форма создания группы inline наверху -->
+			<form id="newGroupForm" class="inline-form">
+				<input type="text" name="name" placeholder="Название группы" required />
+				<select name="teacher" id="newGroupTeacher">
+					<!-- сюда JS вставит опции -->
 				</select>
-				<button type="submit"><i class="fas fa-plus"></i> Добавить курс</button>
+				<button type="submit" class="add-btn">
+					<i class="fas fa-plus"></i> Создать
+				</button>
 			</form>
 
+			<!-- Таблица существующих групп с инлайн-редактированием -->
 			<div class="table-wrapper">
-				<table id="coursesTable">
+				<table id="groupsTable">
 					<thead>
 						<tr>
+							<th>ID</th>
 							<th>Название</th>
-							<th>Описание</th>
 							<th>Преподаватель</th>
-							<th>Дата создания</th>
 							<th>Действия</th>
 						</tr>
 					</thead>
-					<tbody id="coursesBody"></tbody>
+					<tbody id="groupsBody">
+						<!-- строки заполняются initGroups() -->
+					</tbody>
 				</table>
 			</div>
 		</main>
