@@ -54,8 +54,9 @@ body {
 }
 .logo {
 	font-size: 1.25rem;
-	font-weight: 700;
 	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
 }
 .nav-links {
 	display: flex;
@@ -126,4 +127,12 @@ body {
 #go-to-questions:hover {
 	transform: translateY(-2px);
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+img {
+	max-width: 100%;
+	height: auto;
+	display: block;
+	margin: 1rem auto;
+	border-radius: 8px;
 }

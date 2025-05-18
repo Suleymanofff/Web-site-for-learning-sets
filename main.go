@@ -96,9 +96,14 @@ func main() {
 
 	// === teacher для своих групп ===
 	apiMux.Handle(
+		"/api/teacher/groups/",
+		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherGroupsHandler)),
+	)
+	apiMux.Handle(
 		"/api/teacher/groups",
 		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherGroupsHandler)),
 	)
+
 	apiMux.Handle(
 		"/api/teacher/student-groups",
 		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherStudentGroupsHandler)),
@@ -108,6 +113,10 @@ func main() {
 	apiMux.Handle(
 		"/api/teacher/courses",
 		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherCoursesHandler)),
+	)
+	apiMux.Handle(
+		"/api/teacher/upload-theory-asset",
+		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(uploadTheoryAssetHandler)),
 	)
 	apiMux.Handle(
 		"/api/teacher/tests",
@@ -183,7 +192,7 @@ func main() {
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			p := strings.TrimPrefix(r.URL.Path, "/api/teacher/courses/")
 			parts := strings.Split(p, "/")
-			if len(parts) == 3 && parts[1] == "theory" {
+			if len(parts) == 2 && parts[1] == "theory" {
 				switch r.Method {
 				case http.MethodPost:
 					CreateTheoryHandler(w, r)
@@ -212,6 +221,8 @@ func main() {
 				UpdateTheoryHandler(w, r, id)
 			case http.MethodDelete:
 				DeleteTheoryHandler(w, r, id)
+			case http.MethodGet:
+				GetTheoryHandler(w, r, id)
 			default:
 				http.NotFound(w, r)
 			}

@@ -1,0 +1,272 @@
+/* ======= Форма создания темы ======= */
+.cards-toolbar {
+	display: flex;
+	gap: var(--sp-sm);
+	margin-bottom: var(--sp-md);
+}
+.cards-toolbar select,
+.cards-toolbar input[type='text'] {
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--card-bg);
+	color: var(--text);
+	transition: background var(--trans), border-color var(--trans);
+}
+.cards-toolbar button.btn-primary {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-xs);
+	padding: var(--sp-xs) var(--sp-md);
+	border: none;
+	border-radius: var(--radius);
+	background: var(--primary);
+	color: #fff;
+	cursor: pointer;
+	transition: background var(--trans);
+}
+
+/* ======= Карточки темы ======= */
+.cards-container {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: var(--sp-md);
+}
+.theory-card {
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: calc(var(--sp-md) + 1rem) var(--sp-md) var(--sp-md);
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: var(--sp-sm);
+	transition: background var(--trans), border-color var(--trans);
+	position: relative;
+}
+
+.theory-card .btn-danger {
+	position: absolute;
+	top: var(--sp-sm);
+	right: var(--sp-sm);
+	padding: 0.25rem 0.5rem;
+	background-color: #e74c3c; /* красный фон */
+	color: #fff; /* белый текст */
+	border: none;
+	border-radius: var(--radius);
+	font-size: 0.85rem;
+	cursor: pointer;
+	transition: background-color var(--trans);
+}
+
+.theory-card .btn-danger {
+	background-color: #c0392b; /* затемнённый при ховере */
+}
+.theory-card .title-input {
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--bg);
+	color: var(--text);
+	transition: background var(--trans), border-color var(--trans);
+}
+.theory-card button {
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--primary);
+	color: #fff;
+	cursor: pointer;
+	transition: background var(--trans);
+}
+.theory-card .save-theory:hover,
+.theory-card .edit-content:hover {
+	opacity: 0.9;
+}
+
+/* ======= Состояния пусто/ошибка ======= */
+.cards-container .empty,
+.cards-container .error {
+	grid-column: 1 / -1;
+	text-align: center;
+	padding: var(--sp-md);
+	border: 1px dashed var(--border);
+	border-radius: var(--radius);
+}
+.cards-container .empty {
+	color: var(--text-muted);
+}
+.cards-container .error {
+	color: #e74c3c;
+}
+
+/* ======= Модалка ======= */
+.modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100;
+}
+.modal.hidden {
+	display: none;
+}
+.modal-overlay {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background: rgba(var(--bg-rgb), 0.8);
+}
+.modal-content {
+	background: var(--card-bg);
+	color: var(--text);
+	padding: var(--sp-md);
+	border-radius: var(--radius);
+	border: 1px solid var(--border);
+	width: 90%;
+	max-width: 800px;
+	z-index: 101;
+	transition: background var(--trans), border-color var(--trans);
+}
+.modal-content h2 {
+	margin-bottom: var(--sp-md);
+}
+
+/* ======= Quill редактор ======= */
+#editorContainer {
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: var(--sp-md);
+	transition: background var(--trans), border-color var(--trans);
+}
+#editorToolbar {
+	background: var(--bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	margin-bottom: var(--sp-xs);
+	padding: var(--sp-xs);
+}
+#editorCanvas {
+	background: var(--bg);
+	color: var(--text);
+	min-height: 300px;
+	padding: var(--sp-xs);
+	border-radius: var(--radius);
+	overflow-y: auto;
+	transition: background var(--trans), color var(--trans);
+}
+
+/* ======= Кнопки в модалке ======= */
+.modal-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--sp-sm);
+	margin-top: var(--sp-md);
+}
+.modal-footer .btn {
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--bg);
+	color: var(--text);
+	cursor: pointer;
+	transition: background var(--trans), border-color var(--trans);
+}
+.modal-footer .btn-primary {
+	background: var(--primary);
+	color: #fff;
+}
+.modal-footer .btn-primary:hover {
+	opacity: 0.9;
+}
+
+/* ======= Картинки внутри ======= */
+.theory-content img,
+#editorCanvas img {
+	max-width: 100%;
+	height: auto;
+	display: block;
+	margin: var(--sp-md) auto;
+	border-radius: var(--radius);
+}
+
+#toast-container {
+	position: fixed;
+	top: var(--sp-sm);
+	right: var(--sp-sm);
+	z-index: 120;
+}
+.toast {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-xs);
+	margin-bottom: var(--sp-xs);
+	padding: var(--sp-sm) var(--sp-md);
+	border-radius: var(--radius);
+	color: #fff;
+	font-size: 0.95rem;
+	animation: fadeIn 0.3s forwards;
+}
+.toast.success {
+	background: #28a745;
+}
+.toast.error {
+	background: #dc3545;
+}
+.toast.info {
+	background: var(--primary);
+}
+.toast.hide {
+	animation: fadeOut 0.3s forwards;
+}
+@keyframes fadeIn {
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes fadeOut {
+	to {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+}
+
+/* ======= Отключаем спиннер и оверлей полностью ======= */
+#loading-overlay {
+	display: none !important;
+}
+.spinner {
+	display: none !important;
+}
+
+/* ======= Модалка ======= */
+/* (остальные ваши правила без изменений) */
+.modal-content {
+	/* ... */
+	/* Разрешаем скролл внутри, если сама модалка переполнена */
+	max-height: 90vh;
+	overflow-y: auto;
+}
+
+/* ======= Контейнер Quill ======= */
+#editorContainer {
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: var(--sp-md);
+	/* Ограничиваем высоту и даём скролл */
+	max-height: 60vh;
+
+	transition: background var(--trans), border-color var(--trans),
+		color var(--trans);
+}
+
+#ql-editor {
+	overflow-y: auto;
+}

@@ -10,15 +10,17 @@ function navigate(url) {
 // -----------------------
 async function loadUserIcon() {
 	try {
-		const res = await fetch('/api/profile', { credentials: 'include' })
-		if (!res.ok) return
+		const res = await fetch('/api/profile', { credentials: 'same-origin' })
+		if (!res.ok) return null // не залогинен или другая ошибка
 		const user = await res.json()
 		if (user.avatar_path) {
 			const img = document.querySelector('.user-icon img')
 			if (img) img.src = user.avatar_path
 		}
+		return user
 	} catch (err) {
 		console.error('Error loading user icon:', err)
+		return null
 	}
 }
 
@@ -127,7 +129,7 @@ async function saveQuickQuestions() {
 				const textEl = opt.querySelector('.option-text')
 				if (!textEl) continue
 
-				const correct = opt.dataset.correct === 'true'
+				const isCorrect = opt.dataset.correct === 'true'
 
 				await fetch('/api/teacher/options', {
 					method: 'POST',
@@ -136,7 +138,7 @@ async function saveQuickQuestions() {
 					body: JSON.stringify({
 						question_id: questionId,
 						option_text: textEl.textContent.trim(),
-						correct_choice: correct,
+						is_correct: isCorrect,
 					}),
 				})
 			}
@@ -296,9 +298,6 @@ async function loadQuestions(testId) {
 	}
 }
 
-// -----------------------
-// initQuestions
-// -----------------------
 async function initQuestions() {
 	const select = document.getElementById('testSelect')
 
@@ -451,7 +450,7 @@ async function initQuestions() {
 			return
 		}
 
-		// d) Сохранить отредактированный вопрос
+		// d) Сохранить отредактированный вопрос вместе со всеми вариантами
 		if (e.target.matches('.save-question')) {
 			const qid = e.target.dataset.id
 			const row = e.target.closest('tr')
@@ -466,6 +465,8 @@ async function initQuestions() {
 				question_type: type,
 				multiple_choice: multi,
 			}
+
+			// Для open‑вопросов — корректный ответ
 			if (type === 'open') {
 				const optionsRow = document.querySelector(
 					`.options-row[data-qid="${qid}"]`
@@ -473,19 +474,55 @@ async function initQuestions() {
 				const input = optionsRow?.querySelector('.open-answer-input')
 				if (input) payload.correct_answer_text = input.value.trim()
 			}
+
 			try {
-				const res = await fetch('/api/teacher/questions', {
+				// 1) Обновляем сам вопрос
+				const resQ = await fetch('/api/teacher/questions', {
 					method: 'PUT',
 					credentials: 'include',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload),
 				})
-				if (!res.ok) throw new Error(await res.text())
-				alert('Вопрос сохранён')
-				loadQuestions(select.value)
+				if (!resQ.ok) throw new Error(await resQ.text())
+
+				// 2) Для закрытых вопросов — обновляем все варианты
+				if (type === 'closed') {
+					const tbodyOpts = document.getElementById(`opts-${qid}`)
+					if (tbodyOpts) {
+						for (let rowOpt of tbodyOpts.querySelectorAll('tr')) {
+							const oid = rowOpt.querySelector('.edit-opt-text')?.dataset.id
+							if (!oid) continue
+
+							const optionText = rowOpt
+								.querySelector(`.edit-opt-text[data-id="${oid}"]`)
+								.value.trim()
+							const isCorrect = rowOpt.querySelector(
+								`.edit-opt-correct[data-id="${oid}"]`
+							).checked
+
+							const resO = await fetch('/api/teacher/options', {
+								method: 'PUT',
+								credentials: 'include',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({
+									id: +oid,
+									option_text: optionText,
+									is_correct: isCorrect,
+								}),
+							})
+							if (!resO.ok) {
+								const txt = await resO.text()
+								throw new Error(`Ошибка сохранения варианта ${oid}: ${txt}`)
+							}
+						}
+					}
+				}
+
+				alert('Вопрос и варианты сохранены')
+				await loadQuestions(select.value)
 			} catch (err) {
 				console.error(err)
-				alert('Не удалось сохранить вопрос')
+				alert(err.message || 'Не удалось сохранить вопрос и варианты')
 			}
 			return
 		}
@@ -514,7 +551,6 @@ async function initQuestions() {
 		// f) Создать новый вариант ответа для закрытого вопроса
 		if (e.target.matches('.save-new-option')) {
 			const qid = e.target.dataset.id
-			// находим непосредственно <tr> с формой
 			const row = e.target.closest('tr')
 			const textEl = row.querySelector('.new-opt-text')
 			const correctEl = row.querySelector('.new-opt-correct')
@@ -536,10 +572,8 @@ async function initQuestions() {
 					}),
 				})
 				if (!res.ok) throw new Error(await res.text())
-				// очистка формы
 				textEl.value = ''
 				correctEl.checked = false
-				// обновляем список вариантов
 				await loadOptions(qid)
 			} catch (err) {
 				console.error(err)
@@ -822,21 +856,23 @@ function initTests() {
 let _theoryList = []
 let _theoryCourseId = null
 let _theoryCourseTitle = ''
+// В самом верху скрипта, перед initTheory
+let quill,
+	quillInitialized = false
+let _isCreatingTheory = false
 
 // -----------------------
 // initTheory — заполняет селектор курсов и загружает темы
 // -----------------------
 async function initTheory() {
+	// 1) Заполняем селект курсами
 	const select = document.getElementById('theoryCourseSelect')
 	if (!select) {
 		console.error('Не найден селект #theoryCourseSelect')
 		return
 	}
-
-	// placeholder
 	select.innerHTML = '<option value="" disabled selected>Выберите курс</option>'
 
-	// 1) Загрузить курсы по кукам
 	let courses
 	try {
 		const res = await fetch('/api/teacher/courses', { credentials: 'include' })
@@ -846,13 +882,10 @@ async function initTheory() {
 		console.error('Ошибка загрузки курсов:', err)
 		return
 	}
-
-	if (!Array.isArray(courses) || courses.length === 0) {
+	if (!Array.isArray(courses) || !courses.length) {
 		console.warn('Нет курсов')
 		return
 	}
-
-	// 2) Добавить опции
 	courses.forEach(c => {
 		const o = document.createElement('option')
 		o.value = c.id
@@ -860,7 +893,7 @@ async function initTheory() {
 		select.appendChild(o)
 	})
 
-	// 3) Выбрать первый и загрузить темы
+	// 2) Выбираем первый курс и загружаем темы
 	select.selectedIndex = 1
 	_theoryCourseId = +select.value
 	_theoryCourseTitle = select.selectedOptions[0].textContent
@@ -869,7 +902,7 @@ async function initTheory() {
 	).textContent = `Теория — ${_theoryCourseTitle}`
 	await reloadTheoryList(_theoryCourseId)
 
-	// 4) При смене селекта — перезагрузить темы
+	// 3) При смене селекта — перезагружаем темы
 	select.addEventListener('change', async e => {
 		_theoryCourseId = +e.target.value
 		_theoryCourseTitle = e.target.selectedOptions[0].textContent
@@ -879,128 +912,402 @@ async function initTheory() {
 		await reloadTheoryList(_theoryCourseId)
 	})
 
-	// 5) Делегировать клики по кнопкам Сохранить и Удалить
-	document.getElementById('theoryBody').addEventListener('click', async e => {
-		const tr = e.target.closest('tr[data-id]')
-		if (!tr) return
-		const id = +tr.dataset.id
-
-		// Сохранить изменения
-		if (e.target.closest('.save-topic')) {
-			const title = tr.querySelector('.edit-title').value.trim()
-			const content = tr.querySelector('.edit-content').value.trim()
-			const orig = _theoryList.find(i => i.id === id) || {}
-			const payload = {
-				title,
-				content,
-				sort_order: orig.sort_order || 0,
-			}
-
+	// 4) Обработка формы создания новой темы — вешаем только один раз
+	const newForm = document.getElementById('newTheoryForm')
+	if (newForm && !newForm.dataset.bound) {
+		newForm.dataset.bound = 'true'
+		newForm.addEventListener('submit', async e => {
+			e.preventDefault()
+			if (_isCreatingTheory) return
+			const title = e.target.title.value.trim()
+			if (!title) return
+			_isCreatingTheory = true
 			try {
 				const res = await fetch(
-					`/api/teacher/courses/${_theoryCourseId}/theory/${id}`,
+					`/api/teacher/courses/${_theoryCourseId}/theory`,
 					{
-						method: 'PUT',
+						method: 'POST',
 						credentials: 'include',
 						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(payload),
+						body: JSON.stringify({ title }),
 					}
 				)
 				if (!res.ok) throw new Error(await res.text())
-				alert('Тема сохранена')
+				e.target.reset()
 				await reloadTheoryList(_theoryCourseId)
+				showToast('Тема успешно создана!', 'success')
 			} catch (err) {
-				console.error('Ошибка сохранения темы:', err)
-				alert('Ошибка сохранения: ' + err.message)
+				console.error('Ошибка создания темы:', err)
+				showToast('Ошибка при создании темы: ' + err.message, 'error')
+			} finally {
+				_isCreatingTheory = false
 			}
-			return
-		}
+		})
+	}
 
-		// Удалить тему
-		if (e.target.closest('.delete-topic')) {
-			if (!confirm('Удалить тему?')) return
-			try {
-				const res = await fetch(
-					`/api/teacher/courses/${_theoryCourseId}/theory/${id}`,
-					{
-						method: 'DELETE',
-						credentials: 'include',
-					}
-				)
-				if (!res.ok) throw new Error(await res.text())
-				await reloadTheoryList(_theoryCourseId)
-			} catch (err) {
-				console.error('Ошибка удаления темы:', err)
-				alert('Ошибка удаления: ' + err.message)
-			}
-			return
-		}
+	// 5) Делегированное открытие модалки редактирования содержания
+	document.body.addEventListener('click', e => {
+		const btn = e.target.closest('[data-action="open-theory-modal"]')
+		if (!btn) return
+		openTheoryModal(btn.dataset.topicId)
 	})
 }
 
 // -----------------------
-// reloadTheoryList — загрузить список тем и отрисовать таблицу
+// reloadTheoryList — загрузить список тем и отрисовать карточки
 // -----------------------
 async function reloadTheoryList(courseId) {
-	const tbody = document.getElementById('theoryBody')
-	if (!tbody) return
-	tbody.innerHTML = '' // очистка
+	const container = document.getElementById('theoryCards')
+	container.innerHTML = ''
 
-	let list
+	// 1) Запрос списка тем
+	let res
 	try {
-		// правильный публичный эндпоинт для тем
-		const res = await fetch(`/api/courses/${courseId}/theory`, {
+		res = await fetch(`/api/courses/${courseId}/theory`, {
 			credentials: 'include',
 		})
-		if (!res.ok) throw new Error(`Status ${res.status}`)
+	} catch (err) {
+		console.error('Сетевая ошибка при загрузке тем:', err)
+		container.innerHTML =
+			'<p class="error">Не удалось загрузить темы (сетевая ошибка).</p>'
+		showToast('Не удалось загрузить темы (сетевая ошибка).', 'error')
+		return
+	}
+
+	// 2) Обработка HTTP‑статуса
+	if (!res.ok) {
+		console.error(`Ошибка ${res.status} при загрузке тем: ${res.statusText}`)
+		container.innerHTML = `<p class="error">Не удалось загрузить темы (код ${res.status}).</p>`
+		showToast(`Не удалось загрузить темы (код ${res.status}).`, 'error')
+		return
+	}
+
+	// 3) Парсинг JSON
+	let list
+	try {
 		list = await res.json()
 	} catch (err) {
-		console.error('Ошибка загрузки тем:', err)
+		console.error('Ошибка разбора JSON от сервера:', err)
+		container.innerHTML = '<p class="error">Некорректный ответ сервера.</p>'
+		showToast('Некорректный ответ сервера.', 'error')
 		return
 	}
 
-	_theoryList = Array.isArray(list) ? list : []
-	renderTheoryTable()
+	// 4) Пустой список тем
+	if (!Array.isArray(list) || list.length === 0) {
+		container.innerHTML = '<p class="empty">Тем ещё нет. Создайте первую!</p>'
+		return
+	}
+
+	// 5) Рендер каждой карточки темы
+	list.forEach(item => {
+		const card = document.createElement('div')
+		card.classList.add('theory-card')
+		card.dataset.id = item.id
+
+		// --- Удаление темы ---
+		const delBtn = document.createElement('button')
+		delBtn.classList.add('btn', 'btn-danger')
+		delBtn.textContent = 'Удалить'
+
+		delBtn.addEventListener('click', async () => {
+			if (!confirm('Удалить тему?')) return
+			try {
+				const delRes = await fetch(`/api/teacher/theory/${item.id}`, {
+					method: 'DELETE',
+					credentials: 'include',
+				})
+				if (!delRes.ok) throw new Error(`Код ${delRes.status}`)
+				await reloadTheoryList(courseId)
+			} catch (err) {
+				console.error('Ошибка при удалении темы:', err)
+				alert('Не удалось удалить тему: ' + err.message)
+			}
+		})
+		card.appendChild(delBtn)
+
+		// --- Редактирование заголовка ---
+		const titleInput = document.createElement('input')
+		titleInput.type = 'text'
+		titleInput.classList.add('title-input')
+		titleInput.value = item.title
+		card.appendChild(titleInput)
+
+		const saveBtn = document.createElement('button')
+		saveBtn.classList.add('save-theory')
+		saveBtn.textContent = 'Сохранить'
+		saveBtn.addEventListener('click', async () => {
+			const newTitle = titleInput.value.trim()
+			if (!newTitle) {
+				alert('Заголовок не может быть пустым')
+				titleInput.value = item.title
+				return
+			}
+			if (newTitle === item.title) return
+			try {
+				const updRes = await fetch(`/api/teacher/theory/${item.id}`, {
+					method: 'PUT',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ title: newTitle }),
+				})
+				if (!updRes.ok) throw new Error(`Код ${updRes.status}`)
+				item.title = newTitle
+				saveBtn.textContent = 'Сохранено'
+				setTimeout(() => (saveBtn.textContent = 'Сохранить'), 1000)
+			} catch (err) {
+				console.error('Ошибка при сохранении темы:', err)
+				alert('Не удалось сохранить: ' + err.message)
+				titleInput.value = item.title
+			}
+		})
+		card.appendChild(saveBtn)
+
+		// --- Кнопка редактирования содержания ---
+		const editBtn = document.createElement('button')
+		editBtn.classList.add('edit-content', 'btn')
+		editBtn.textContent = 'Редактировать содержание'
+		editBtn.setAttribute('data-action', 'open-theory-modal')
+		editBtn.setAttribute('data-topic-id', item.id)
+		card.appendChild(editBtn)
+
+		container.appendChild(card)
+	})
 }
 
-// -----------------------
-// renderTheoryTable — строит HTML строк для каждой темы
-// -----------------------
-function renderTheoryTable() {
-	const tbody = document.getElementById('theoryBody')
-	if (_theoryList.length === 0) {
-		tbody.innerHTML =
-			'<tr><td colspan="7" style="text-align:center">Нет тем</td></tr>'
-		return
+let currentTheoryId = null
+
+async function openTheoryModal(topicId) {
+	currentTheoryId = topicId
+	const modal = document.getElementById('theoryModal')
+	modal.classList.remove('hidden')
+
+	// Инициализируем Quill единожды
+	if (!quillInitialized) {
+		quill = new Quill('#editorCanvas', {
+			modules: { toolbar: '#editorToolbar' },
+			theme: 'snow',
+		})
+		quillInitialized = true
+
+		// Регистрируем PDF‑blot
+		const BlockEmbed = Quill.import('blots/block/embed')
+		class PdfBlot extends BlockEmbed {
+			static create(val) {
+				const node = super.create()
+				node.setAttribute('href', val.url)
+				node.setAttribute('target', '_blank')
+				node.innerHTML = `<i class="pdf-icon"></i>${val.name}`
+				return node
+			}
+			static value(node) {
+				return { url: node.getAttribute('href'), name: node.textContent }
+			}
+		}
+		PdfBlot.blotName = 'pdf'
+		PdfBlot.tagName = 'a'
+		Quill.register(PdfBlot)
+
+		// Обработчик вставки PDF
+		document.getElementById('ql-insert-pdf').addEventListener('click', () => {
+			const input = document.createElement('input')
+			input.type = 'file'
+			input.accept = 'application/pdf'
+			input.click()
+			input.onchange = async () => {
+				const file = input.files[0]
+				if (!file) return
+				const fd = new FormData()
+				fd.append('file', file)
+				showLoader()
+				try {
+					const res = await fetch(`/api/teacher/upload-theory-asset`, {
+						method: 'POST',
+						credentials: 'include',
+						body: fd,
+					})
+					if (!res.ok) throw new Error(res.status)
+					const { url } = await res.json()
+					const range = quill.getSelection(true)
+					quill.insertEmbed(range.index, 'pdf', { url, name: file.name })
+					quill.setSelection(range.index + 1)
+					showToast('PDF вставлен', 'success')
+				} catch (err) {
+					console.error(err)
+					showToast('Ошибка загрузки PDF: ' + err.message, 'error')
+				} finally {
+					hideLoader()
+				}
+			}
+		})
 	}
 
-	tbody.innerHTML = _theoryList
-		.map(item => {
-			const date = item.updated_at
-				? new Date(item.updated_at).toLocaleDateString()
-				: new Date(item.created_at).toLocaleDateString()
-
-			return `
-      <tr data-id="${item.id}">
-        <td><input class="edit-title"    value="${item.title}"></td>
-        <td><textarea class="edit-content">${item.content}</textarea></td>
-        <td>${_theoryCourseTitle}</td>
-        <td>${date}</td>
-        <td><!-- сразу редактировать, кнопки нет --></td>
-        <td>
-          <button class="save-topic">
-            <i class="fas fa-save"></i>
-          </button>
-        </td>
-        <td>
-          <button class="delete-topic">
-            <i class="fas fa-trash"></i>
-          </button>
-        </td>
-      </tr>
-    `
+	// Активируем редактор и загружаем контент
+	quill.enable(true)
+	quill.focus()
+	try {
+		const data = await fetch(`/api/teacher/theory/${currentTheoryId}`, {
+			credentials: 'include',
+		}).then(r => {
+			if (!r.ok) throw r
+			return r.json()
 		})
-		.join('')
+		quill.root.innerHTML = data.content || ''
+	} catch (err) {
+		console.error(err)
+		showToast('Не удалось загрузить содержание', 'error')
+	}
+
+	// Закрытие по оверлею и Esc
+	modal.querySelector('.modal-overlay').onclick = () =>
+		modal.classList.add('hidden')
+	document.addEventListener('keydown', function esc(e) {
+		if (e.key === 'Escape') {
+			modal.classList.add('hidden')
+			document.removeEventListener('keydown', esc)
+		}
+	})
+}
+
+// Загрузка PDF/изображений
+// document
+// 	.getElementById('uploadPdfBtn')
+// 	.addEventListener('click', () => document.getElementById('pdfInput').click())
+// document
+// 	.getElementById('uploadImgBtn')
+// 	.addEventListener('click', () => document.getElementById('imgInput').click())
+
+function insertHtmlAtCursor(html) {
+	const sel = window.getSelection()
+	if (!sel.rangeCount) return
+	const range = sel.getRangeAt(0)
+	range.deleteContents()
+	const el = document.createElement('div')
+	el.innerHTML = html
+	const frag = document.createDocumentFragment()
+	let node, lastNode
+	while ((node = el.firstChild)) {
+		lastNode = frag.appendChild(node)
+	}
+	range.insertNode(frag)
+	// Сдвинуть курсор после вставленного фрагмента
+	if (lastNode) {
+		range.setStartAfter(lastNode)
+		sel.removeAllRanges()
+		sel.addRange(range)
+	}
+}
+
+async function handleFileUpload(inputEl, field) {
+	const file = inputEl.files[0]
+	if (!file) return
+
+	const fd = new FormData()
+	fd.append('file', file)
+
+	try {
+		const res = await fetch('/api/teacher/upload-theory-asset', {
+			method: 'POST',
+			credentials: 'include',
+			body: fd,
+		})
+		if (!res.ok) throw new Error(`Status ${res.status}`)
+		const data = await res.json()
+		const html =
+			field === 'pdf'
+				? `<a href="${data.url}" …>${file.name}</a>`
+				: `<img src="${data.url}" …>`
+		insertHtmlAtCursor(html)
+		showToast('Файл загружен', 'success')
+	} catch (err) {
+		console.error(err)
+		showToast('Не удалось загрузить файл: ' + err.message, 'error')
+	}
+}
+
+// document
+// 	.getElementById('saveTheoryContent')
+// 	.addEventListener('click', async () => {
+// 		const content = quill.root.innerHTML
+// 		try {
+// 			const res = await fetch(`/api/teacher/theory/${currentTheoryId}`, {
+// 				method: 'PUT',
+// 				credentials: 'include',
+// 				headers: { 'Content-Type': 'application/json' },
+// 				body: JSON.stringify({ content }),
+// 			})
+// 			if (!res.ok) throw new Error(`Ошибка ${res.status}`)
+// 			showToast('Содержание сохранено', 'success')
+// 			document.getElementById('theoryModal').classList.add('hidden')
+// 		} catch (err) {
+// 			console.error(err)
+// 			showToast(err.message, 'error')
+// 		}
+// 	})
+
+/**
+ * Показывает уведомление (toast) в правом верхнем углу.
+ * @param {string} message - Сообщение для отображения.
+ * @param {'success' | 'error' | 'info'} type - Тип уведомления.
+ * @param {number} duration - Длительность показа в миллисекундах.
+ */
+// function showToast(message, type = 'info', duration = 3000) {
+// 	const toastId = 'toast-' + Date.now()
+// 	const toastContainer =
+// 		document.getElementById('toast-container') || createToastContainer()
+
+// 	const toast = document.createElement('div')
+// 	toast.classList.add('toast', `toast-${type}`)
+// 	toast.id = toastId
+// 	toast.setAttribute('role', 'alert')
+// 	toast.setAttribute('aria-live', 'assertive')
+
+// 	const messageSpan = document.createElement('span')
+// 	messageSpan.textContent = message
+// 	toast.appendChild(messageSpan)
+
+// 	const closeButton = document.createElement('button')
+// 	closeButton.classList.add('toast-close-btn')
+// 	closeButton.innerHTML = '&times;'
+// 	closeButton.setAttribute('aria-label', 'Закрыть')
+// 	closeButton.onclick = () => {
+// 		toast.classList.remove('show')
+// 		setTimeout(() => toast.remove(), 300) // Дать время для анимации исчезновения
+// 	}
+// 	toast.appendChild(closeButton)
+
+// 	toastContainer.appendChild(toast)
+
+// 	// Показать toast
+// 	setTimeout(() => {
+// 		toast.classList.add('show')
+// 	}, 10) // Небольшая задержка для срабатывания CSS-transition
+
+// 	// Скрыть и удалить toast по истечении времени
+// 	setTimeout(() => {
+// 		toast.classList.remove('show')
+// 		setTimeout(() => toast.remove(), 300)
+// 	}, duration)
+// }
+
+function createToastContainer() {
+	const container = document.createElement('div')
+	container.id = 'toast-container'
+	document.body.appendChild(container)
+	return container
+}
+
+// Универсальная функция тостов
+function showToast(message, type = 'success', timeout = 3000) {
+	const container = document.getElementById('toast-container')
+	const toast = document.createElement('div')
+	toast.className = `toast ${type}`
+	toast.textContent = message
+	container.appendChild(toast)
+	setTimeout(() => {
+		toast.style.opacity = '0'
+		setTimeout(() => container.removeChild(toast), 300)
+	}, timeout)
 }
 
 // -----------------------
@@ -1187,4 +1494,88 @@ document.addEventListener('DOMContentLoaded', () => {
 	document
 		.getElementById('saveQuickQuestions')
 		?.addEventListener('click', saveQuickQuestions)
+
+	// Обработчик кнопки «PDF»
+	document.getElementById('ql-insert-pdf').addEventListener('click', () => {
+		const input = document.createElement('input')
+		input.setAttribute('type', 'file')
+		input.setAttribute('accept', 'application/pdf')
+		input.click()
+		input.onchange = async () => {
+			const file = input.files[0]
+			if (!file) return
+			const fd = new FormData()
+			fd.append('file', file)
+			showLoader()
+			try {
+				const res = await fetch('/api/teacher/upload-theory-asset', {
+					method: 'POST',
+					credentials: 'include',
+					body: fd,
+				})
+				if (!res.ok) throw new Error(`Ошибка ${res.status}`)
+				const { url } = await res.json()
+				// Вставляем ссылку‑иконку PDF
+				const range = quill.getSelection(true)
+				quill.insertEmbed(range.index, 'pdf', { url, name: file.name })
+				quill.setSelection(range.index + 1)
+				showToast('PDF вставлен', 'success')
+			} catch (err) {
+				console.error(err)
+				showToast('Ошибка загрузки PDF: ' + err.message, 'error')
+			} finally {
+				hideLoader()
+			}
+		}
+	})
+
+	// Регистрируем кастомный blot для PDF
+	const BlockEmbed = Quill.import('blots/block/embed')
+	class PdfBlot extends BlockEmbed {
+		static create(value) {
+			const node = super.create()
+			node.setAttribute('href', value.url)
+			node.setAttribute('target', '_blank')
+			node.innerHTML = `<i class="pdf-icon"></i>${value.name}`
+			return node
+		}
+		static value(node) {
+			return {
+				url: node.getAttribute('href'),
+				name: node.textContent,
+			}
+		}
+	}
+	PdfBlot.blotName = 'pdf'
+	PdfBlot.tagName = 'a'
+	Quill.register(PdfBlot)
+
+	const saveBtn = document.getElementById('saveTheoryContent')
+	if (saveBtn) {
+		saveBtn.addEventListener('click', async () => {
+			const content = quill.root.innerHTML
+			try {
+				const res = await fetch(`/api/teacher/theory/${currentTheoryId}`, {
+					method: 'PUT',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ content }),
+				})
+				if (!res.ok) throw new Error(`Ошибка ${res.status}`)
+				showToast('Содержание сохранено', 'success')
+				document.getElementById('theoryModal').classList.add('hidden')
+			} catch (err) {
+				console.error(err)
+				showToast(err.message, 'error')
+			}
+		})
+	}
+
+	// Закрытие модалки по кнопке Отмена
+	const closeBtn = document.getElementById('closeTheoryModal')
+	if (closeBtn) {
+		closeBtn.addEventListener('click', () => {
+			document.getElementById('theoryModal').classList.add('hidden')
+		})
+	}
 })

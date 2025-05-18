@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Панель учителя — Set Learn</title>
+		<!-- 1. Инициализация темы -->
+		<script src="/static/js/theme-init.js"></script>
+		<!-- 2. Стили панели учителя -->
+		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/common.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/index.css" />
+		<!-- 3. Font Awesome -->
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+		/>
+		<!-- 4. Скрипт панели учителя -->
+		<script src="/static/teacherPanel/script.js" defer></script>
+	</head>
+	<body>
+		<!-- NAVBAR -->
+		<header class="navbar">
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
+			<nav class="nav-links">
+				<a href="/static/mainPage/index.html">Главная</a>
+				<a href="/static/teacherPanel/html/index.html" class="active"
+					>Панель учителя</a
+				>
+				<a href="/static/teacherPanel/html/courses.html">Курсы</a>
+				<a href="/static/teacherPanel/html/tests.html">Тесты</a>
+				<a href="/static/teacherPanel/html/questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/groups.html">Мои группы</a>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="avatar" />
+				</div>
+			</div>
+		</header>
+
+		<main class="page-content">
+			<h1>Панель учителя</h1>
+			<div class="tiles">
+				<a class="card" href="/static/teacherPanel/html/courses.html"
+					>Управление курсами</a
+				>
+				<a class="card" href="/static/teacherPanel/html/tests.html"
+					>Управление тестами</a
+				>
+				<a class="card" href="/static/teacherPanel/html/questions.html"
+					>Управление вопросами</a
+				>
+				<a class="card" href="/static/teacherPanel/html/theory.html"
+					>Управление теорией</a
+				>
+				<a class="card" href="/static/teacherPanel/html/groups.html"
+					>Управление группами</a
+				>
+			</div>
+		</main>
+	</body>
+</html>

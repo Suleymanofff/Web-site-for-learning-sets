@@ -81,8 +81,9 @@ body {
 /* Логотип */
 .logo {
 	font-size: 1.25rem;
-	font-weight: 700;
 	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
 }
 
 /* Ссылки меню */

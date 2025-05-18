@@ -163,7 +163,11 @@ async function initUsers() {
 			const roleSelect = tr.querySelector('select.role-select')
 			const groupSelect = tr.querySelector('select.group-select')
 			const newRole = roleSelect.value
-			const newGroup = groupSelect.value ? +groupSelect.value : null
+			const newGroup = groupSelect
+				? groupSelect.value
+					? +groupSelect.value
+					: null
+				: null
 
 			try {
 				// обновляем роль
@@ -178,44 +182,47 @@ async function initUsers() {
 					throw new Error(t || 'Не удалось обновить роль')
 				}
 
-				// обновляем группу (null закрывает старую связь)
-				let r2 = await fetch('/api/admin/student-groups', {
-					method: 'PUT',
-					credentials: 'include',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ student_id: id, group_id: newGroup }),
-				})
-				if (!r2.ok) {
-					let t = await r2.text()
-					throw new Error(t || 'Не удалось обновить группу')
+				// обновляем группу только если у пользователя есть селект (т.е. он student)
+				if (roleSelect.value === 'student' && groupSelect) {
+					let r2 = await fetch('/api/admin/student-groups', {
+						method: 'PUT',
+						credentials: 'include',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ student_id: id, group_id: newGroup }),
+					})
+					if (!r2.ok) {
+						let t = await r2.text()
+						throw new Error(t || 'Не удалось обновить группу')
+					}
+					// сразу выставляем значение селекта
+					groupSelect.value = newGroup != null ? newGroup : ''
 				}
 
-				// **Важное отличие:** сразу выставляем значение, не перезагружая всех
-				groupSelect.value = newGroup != null ? newGroup : ''
 				alert('Данные успешно сохранены')
 			} catch (err) {
-				alert('Ошибка: ' + err.message)
+				console.error(err)
+				alert(err.message)
 			}
 		}
+	}
 
-		// 4.2. Удалить пользователя
-		if (btn.classList.contains('del-btn')) {
-			if (!confirm('Удалить пользователя?')) return
-			try {
-				let res = await fetch('/api/admin/users', {
-					method: 'DELETE',
-					credentials: 'include',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ id }),
-				})
-				if (!res.ok) {
-					let t = await res.text()
-					throw new Error(t || 'Не удалось удалить пользователя')
-				}
-				tr.remove()
-			} catch (err) {
-				alert('Ошибка: ' + err.message)
+	// 4.2. Удалить пользователя
+	if (btn.classList.contains('del-btn')) {
+		if (!confirm('Удалить пользователя?')) return
+		try {
+			let res = await fetch('/api/admin/users', {
+				method: 'DELETE',
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ id }),
+			})
+			if (!res.ok) {
+				let t = await res.text()
+				throw new Error(t || 'Не удалось удалить пользователя')
 			}
+			tr.remove()
+		} catch (err) {
+			alert('Ошибка: ' + err.message)
 		}
 	}
 }

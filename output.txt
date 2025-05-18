@@ -17,7 +17,7 @@
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
 				<a href="index.html">Панель админа</a>
@@ -81,7 +81,7 @@
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
 				<a href="index.html" class="active">Панель админа</a>
@@ -153,7 +153,7 @@
 	<body>
 		<!-- Навигационная панель -->
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
 				<a href="index.html" class="active">Панель админа</a>
@@ -356,7 +356,11 @@ async function initUsers() {
 			const roleSelect = tr.querySelector('select.role-select')
 			const groupSelect = tr.querySelector('select.group-select')
 			const newRole = roleSelect.value
-			const newGroup = groupSelect.value ? +groupSelect.value : null
+			const newGroup = groupSelect
+				? groupSelect.value
+					? +groupSelect.value
+					: null
+				: null
 
 			try {
 				// обновляем роль
@@ -371,44 +375,47 @@ async function initUsers() {
 					throw new Error(t || 'Не удалось обновить роль')
 				}
 
-				// обновляем группу (null закрывает старую связь)
-				let r2 = await fetch('/api/admin/student-groups', {
-					method: 'PUT',
-					credentials: 'include',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ student_id: id, group_id: newGroup }),
-				})
-				if (!r2.ok) {
-					let t = await r2.text()
-					throw new Error(t || 'Не удалось обновить группу')
+				// обновляем группу только если у пользователя есть селект (т.е. он student)
+				if (roleSelect.value === 'student' && groupSelect) {
+					let r2 = await fetch('/api/admin/student-groups', {
+						method: 'PUT',
+						credentials: 'include',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ student_id: id, group_id: newGroup }),
+					})
+					if (!r2.ok) {
+						let t = await r2.text()
+						throw new Error(t || 'Не удалось обновить группу')
+					}
+					// сразу выставляем значение селекта
+					groupSelect.value = newGroup != null ? newGroup : ''
 				}
 
-				// **Важное отличие:** сразу выставляем значение, не перезагружая всех
-				groupSelect.value = newGroup != null ? newGroup : ''
 				alert('Данные успешно сохранены')
 			} catch (err) {
-				alert('Ошибка: ' + err.message)
+				console.error(err)
+				alert(err.message)
 			}
 		}
+	}
 
-		// 4.2. Удалить пользователя
-		if (btn.classList.contains('del-btn')) {
-			if (!confirm('Удалить пользователя?')) return
-			try {
-				let res = await fetch('/api/admin/users', {
-					method: 'DELETE',
-					credentials: 'include',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ id }),
-				})
-				if (!res.ok) {
-					let t = await res.text()
-					throw new Error(t || 'Не удалось удалить пользователя')
-				}
-				tr.remove()
-			} catch (err) {
-				alert('Ошибка: ' + err.message)
+	// 4.2. Удалить пользователя
+	if (btn.classList.contains('del-btn')) {
+		if (!confirm('Удалить пользователя?')) return
+		try {
+			let res = await fetch('/api/admin/users', {
+				method: 'DELETE',
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ id }),
+			})
+			if (!res.ok) {
+				let t = await res.text()
+				throw new Error(t || 'Не удалось удалить пользователя')
 			}
+			tr.remove()
+		} catch (err) {
+			alert('Ошибка: ' + err.message)
 		}
 	}
 }
@@ -811,8 +818,9 @@ body {
 }
 .logo {
 	font-size: 1.25rem;
-	font-weight: 700;
 	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
 }
 .nav-links {
 	display: flex;
@@ -1244,7 +1252,7 @@ button:hover {
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
 				<a href="index.html">Панель админа</a>
@@ -1297,7 +1305,7 @@ button:hover {
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
 				<a href="/static/courses/">Курсы</a>
@@ -1308,7 +1316,10 @@ button:hover {
 					style="display: none"
 					>Панель админа</a
 				>
-				<a href="/static/teacherPanel/" id="nav-teacher" style="display: none"
+				<a
+					href="/static/teacherPanel/html/"
+					id="nav-teacher"
+					style="display: none"
 					>Панель учителя</a
 				>
 			</nav>
@@ -1601,8 +1612,9 @@ body {
 /* Логотип */
 .logo {
 	font-size: 1.25rem;
-	font-weight: 700;
 	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
 }
 
 /* Ссылки меню */
@@ -1750,7 +1762,7 @@ body {
 	<body>
 		<!-- Навигационная панель -->
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
 				<a href="/static/courses/" class="active">Курсы</a>
@@ -1760,7 +1772,10 @@ body {
 					style="display: none"
 					>Панель админа</a
 				>
-				<a href="/static/teacherPanel/" id="nav-teacher" style="display: none"
+				<a
+					href="/static/teacherPanel/html/"
+					id="nav-teacher"
+					style="display: none"
 					>Панель учителя</a
 				>
 			</nav>
@@ -2237,11 +2252,11 @@ body {
 	transition: background-color 0.5s ease;
 }
 
-/* Логотип */
 .logo {
 	font-size: 1.25rem;
-	font-weight: 700;
 	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
 }
 
 /* Ссылки меню */
@@ -2545,7 +2560,7 @@ window.addEventListener('unload', () => {
 		<!-- Навигация -->
 		<header class="navbar">
 			<!-- Логотип / название сайта -->
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<!-- Ссылки меню -->
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
@@ -2557,7 +2572,10 @@ window.addEventListener('unload', () => {
 				>
 					Панель админа
 				</a>
-				<a href="/static/teacherPanel/" id="nav-teacher" style="display: none"
+				<a
+					href="/static/teacherPanel/html/"
+					id="nav-teacher"
+					style="display: none"
 					>Панель учителя</a
 				>
 				<a href="/static/leaderboard/" class="active">Лидерборд</a>
@@ -2746,8 +2764,9 @@ body {
 }
 .logo {
 	font-size: 1.25rem;
-	font-weight: 700;
 	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
 }
 .nav-links {
 	display: flex;
@@ -2862,7 +2881,9 @@ body {
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/welcomeMainPage/')">
+				Set Learn
+			</div>
 			<div class="actions">
 				<button id="theme-toggle" aria-label="Переключить тему">
 					<img src="/static/img/dark-theme.png" alt="dark-theme-toggle" />
@@ -3086,7 +3107,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (role === 'admin') {
 				window.location.href = '/static/adminPanel/'
 			} else if (role === 'teacher') {
-				window.location.href = '/static/teacherPanel/'
+				window.location.href = '/static/teacherPanel/html/'
 			} else {
 				window.location.href = '/static/mainPage/'
 			}
@@ -3254,8 +3275,9 @@ body {
 }
 .logo {
 	font-size: 1.25rem;
-	font-weight: 700;
 	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
 }
 .actions {
 	display: flex;
@@ -3529,7 +3551,7 @@ button.ghost {
 		<!-- Навигационная панель -->
 		<header class="navbar">
 			<!-- Логотип / название сайта -->
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<!-- Ссылки меню -->
 			<nav class="nav-links">
 				<a href="/static/mainPage/" class="active">Главная</a>
@@ -3541,7 +3563,10 @@ button.ghost {
 				>
 					Панель админа
 				</a>
-				<a href="/static/teacherPanel/" id="nav-teacher" style="display: none"
+				<a
+					href="/static/teacherPanel/html/"
+					id="nav-teacher"
+					style="display: none"
 					>Панель учителя</a
 				>
 			</nav>
@@ -3777,8 +3802,9 @@ body {
 /* Логотип */
 .logo {
 	font-size: 1.25rem;
-	font-weight: 700;
 	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
 }
 
 /* Ссылки меню */
@@ -3929,7 +3955,7 @@ body {
 	<body>
 		<!-- Единое верхнее меню -->
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
 				<a href="/static/courses/">Курсы</a>
@@ -3940,7 +3966,10 @@ body {
 				>
 					Панель админа
 				</a>
-				<a href="/static/teacherPanel/" id="nav-teacher" style="display: none"
+				<a
+					href="/static/teacherPanel/html/"
+					id="nav-teacher"
+					style="display: none"
 					>Панель учителя</a
 				>
 			</nav>
@@ -4011,6 +4040,7 @@ body {
 						<p><strong>Имя:</strong> <span id="fullName"></span></p>
 						<p><strong>Email:</strong> <span id="email"></span></p>
 						<p><strong>Роль:</strong> <span id="role"></span></p>
+						<p><strong>Группа:</strong> <span id="group">—</span></p>
 						<p><strong>Активен:</strong> <span id="isActive"></span></p>
 						<p><strong>Создан:</strong> <span id="createdAt"></span></p>
 						<p><strong>Последний вход:</strong> <span id="lastLogin"></span></p>
@@ -4105,6 +4135,18 @@ async function loadProfile() {
 		setText('fullName', user.full_name)
 		setText('email', user.email)
 		setText('role', user.role)
+
+		// Логика для отображения группы
+		const groupEl = document.getElementById('group')
+		if (groupEl) {
+			// если студент и есть непустое поле user.group — показываем его
+			if (user.role === 'student' && user.group) {
+				groupEl.textContent = user.group
+			} else {
+				// во всех остальных случаях — прочерк
+				groupEl.textContent = '—'
+			}
+		}
 
 		// Онлайн / последний визит
 		const isActiveEl = document.getElementById('isActive')
@@ -4398,8 +4440,9 @@ body {
 
 .logo {
 	font-size: 1.25rem;
-	font-weight: 700;
 	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
 }
 
 .nav-links {
@@ -4730,7 +4773,7 @@ body {
 	<body>
 		<!-- Навигационная панель -->
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
 				<a href="/static/courses/">Курсы</a>
@@ -4740,7 +4783,10 @@ body {
 					style="display: none"
 					>Панель админа</a
 				>
-				<a href="/static/teacherPanel/" id="nav-teacher" style="display: none"
+				<a
+					href="/static/teacherPanel/html/"
+					id="nav-teacher"
+					style="display: none"
 					>Панель учителя</a
 				>
 			</nav>
@@ -5053,8 +5099,9 @@ body {
 }
 .logo {
 	font-size: 1.25rem;
-	font-weight: 700;
 	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
 }
 .nav-links {
 	display: flex;
@@ -5278,7 +5325,7 @@ body {
 	<body>
 		<!-- Навигация -->
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
 				<a href="/static/courses/">Курсы</a>
@@ -5289,7 +5336,10 @@ body {
 				>
 					Панель админа
 				</a>
-				<a href="/static/teacherPanel/" id="nav-teacher" style="display: none"
+				<a
+					href="/static/teacherPanel/html/"
+					id="nav-teacher"
+					style="display: none"
 					>Панель учителя</a
 				>
 				<a href="/static/stepByStepAnimation/" class="active"
@@ -5472,8 +5522,9 @@ body {
 }
 .logo {
 	font-size: 1.25rem;
-	font-weight: 700;
 	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
 }
 .nav-links {
 	display: flex;
@@ -5566,7 +5617,1044 @@ body {
 	}
 }
 
-Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\courses.html
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\css\common.css
+/* === RESET & VARIABLES === */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+html {
+	font-size: 16px;
+	scroll-behavior: smooth;
+}
+:root {
+	--bg: #f9fafb;
+	--bg-rgb: 249, 250, 251;
+	--text: #1f2937;
+	--card-bg: #ffffff;
+	--border: #e5e7eb;
+	--primary: #4f46e5;
+	--text-muted: #6b7280;
+	--sp-xs: 0.5rem;
+	--sp-sm: 1rem;
+	--sp-md: 1.5rem;
+	--sp-lg: 2rem;
+	--radius: 0.5rem;
+	--trans: 0.3s ease;
+}
+:root[data-theme='dark'] {
+	--bg: #1f2937;
+	--bg-rgb: 31, 41, 55;
+	--text: #f9fafb;
+	--card-bg: #2d3748;
+	--border: #4a5568;
+	--primary: #a78bfa;
+	--text-muted: #a0aec0;
+}
+body {
+	font-family: 'Inter', sans-serif;
+	background: var(--bg);
+	color: var(--text);
+	min-height: 100vh;
+	transition: background 0.5s, color 0.5s;
+}
+
+/* NAVBAR */
+.navbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background: var(--card-bg);
+	padding: var(--sp-xs) var(--sp-md);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+	position: sticky;
+	top: 0;
+	z-index: 100;
+}
+.logo {
+	font-size: 1.25rem;
+	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
+}
+.nav-links {
+	display: flex;
+	gap: var(--sp-md);
+}
+.nav-links a {
+	position: relative;
+	text-decoration: none;
+	color: var(--text-muted);
+	font-weight: 500;
+	padding: var(--sp-xs) 0;
+}
+.nav-links a.active,
+.nav-links a:hover {
+	color: var(--primary);
+}
+.nav-links a.active::after,
+.nav-links a:hover::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	bottom: -2px;
+	width: 100%;
+	height: 2px;
+	background: var(--primary);
+}
+.actions {
+	display: flex;
+	align-items: center;
+}
+#theme-toggle {
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 1.25rem;
+	margin-right: var(--sp-sm);
+}
+.user-icon img {
+	width: 2rem;
+	height: 2rem;
+	border-radius: 50%;
+	object-fit: cover;
+	cursor: pointer;
+	transition: transform var(--trans);
+}
+.user-icon img:hover {
+	transform: scale(1.1);
+}
+
+/* PAGE CONTENT */
+.page-content {
+	max-width: 1200px;
+	margin: var(--sp-lg) auto;
+	padding: 0 var(--sp-md);
+}
+.page-content h1 {
+	margin-bottom: var(--sp-md);
+	color: var(--primary);
+	transition: color var(--trans);
+}
+
+/* TABLE WRAPPER */
+.table-wrapper {
+	margin-top: var(--sp-md);
+	overflow-x: auto;
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+.table-wrapper table {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: auto;
+}
+.table-wrapper th,
+.table-wrapper td {
+	padding: var(--sp-sm) var(--sp-md);
+	text-align: left;
+	white-space: nowrap;
+}
+.table-wrapper thead {
+	background: var(--primary);
+}
+.table-wrapper thead th {
+	color: var(--bg);
+	font-weight: 600;
+}
+
+.course-form {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) auto;
+	gap: var(--sp-sm);
+	margin-top: var(--sp-md);
+	align-items: end;
+}
+
+.course-form input,
+.course-form select {
+	padding: var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--card-bg);
+	transition: border-color var(--trans);
+	color: var(--text);
+}
+
+.course-form input:focus,
+.course-form select:focus {
+	outline: none;
+	border-color: var(--primary);
+}
+.course-form label {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-xs);
+}
+.course-form button {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-xs);
+	padding: var(--sp-sm) var(--sp-md);
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+}
+.course-form button:hover {
+	opacity: 0.9;
+}
+
+.table-wrapper thead th:first-child {
+	border-top-left-radius: var(--radius);
+}
+.table-wrapper thead th:last-child {
+	border-top-right-radius: var(--radius);
+}
+.table-wrapper tbody tr:nth-child(odd) {
+	background: var(--bg);
+}
+.table-wrapper tbody tr:nth-child(even) {
+	background: var(--border);
+}
+.table-wrapper tbody tr:hover {
+	background: rgba(79, 70, 229, 0.1);
+}
+.table-wrapper tbody tr:last-child td:first-child {
+	border-bottom-left-radius: var(--radius);
+}
+.table-wrapper tbody tr:last-child td:last-child {
+	border-bottom-right-radius: var(--radius);
+}
+
+/* CRUD BUTTONS */
+button.save-course,
+button.save-open-answer,
+button.view-group-btn,
+button.save-test,
+button.save-question,
+button.save-option,
+button.save-new-option,
+button.manage-options {
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+	margin-right: var(--sp-xs);
+}
+button.save-course:hover,
+button.save-test:hover,
+button.save-question:hover,
+button.save-option:hover,
+button.save-new-option:hover,
+button.manage-options:hover {
+	opacity: 0.8;
+}
+button.del-course,
+button.del-test,
+button.delete-open-answer,
+button.remove-student-btn,
+button#saveNameBtn,
+button.del-question,
+button.del-option {
+	background: transparent;
+	border: 1px solid var(--text-muted);
+	color: var(--text-muted);
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: background var(--trans), color var(--trans), opacity var(--trans);
+}
+button.del-course:hover,
+button.del-test:hover,
+button.remove-student-btn:hover,
+button#saveNameBtn:hover,
+button.del-question:hover,
+button.del-option:hover {
+	background: var(--text-muted);
+	color: var(--bg);
+	opacity: 0.8;
+}
+
+/* EDITABLE FIELDS */
+.edit-opt-text,
+#groupNameInput,
+.input-add-student,
+input.edit-text {
+	width: 100%;
+	padding: var(--sp-xs) var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--bg);
+	color: var(--text);
+	transition: border-color var(--trans), background var(--trans),
+		color var(--trans);
+}
+input.edit-text:focus,
+.input-add-student:focus,
+#groupNameInput:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+button.submit-students-info {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-xs);
+	padding: var(--sp-sm) var(--sp-md);
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+}
+
+button.submit-students-info:hover {
+	opacity: 0.9;
+}
+
+/* Добавьте этот CSS в /static/teacherPanel/css/common.css */
+
+#toast-container {
+	position: fixed;
+	top: 20px;
+	right: 20px;
+	z-index: 9999;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.toast {
+	background-color: var(--card-bg);
+	color: var(--text);
+	padding: 15px 20px;
+	border-radius: var(--radius);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	opacity: 0;
+	transform: translateX(100%);
+	transition: opacity 0.3s ease, transform 0.3s ease;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	min-width: 250px;
+	max-width: 350px;
+}
+
+.toast.show {
+	opacity: 1;
+	transform: translateX(0);
+}
+
+.toast-success {
+	border-left: 5px solid #28a745; /* Зеленый */
+}
+
+.toast-error {
+	border-left: 5px solid #dc3545; /* Красный */
+}
+
+.toast-info {
+	border-left: 5px solid #17a2b8; /* Синий */
+}
+
+.toast-close-btn {
+	background: none;
+	border: none;
+	color: var(--text-muted);
+	font-size: 1.5rem;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0 0 0 15px;
+	opacity: 0.7;
+}
+
+.toast-close-btn:hover {
+	opacity: 1;
+}
+
+.spinner-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(
+		var(--bg-rgb, 249, 250, 251),
+		0.7
+	); /* Полупрозрачный фон, адаптирующийся к теме */
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: 10;
+}
+
+.spinner {
+	border: 4px solid var(--border);
+	border-top: 4px solid var(--primary);
+	border-radius: 50%;
+	width: 40px;
+	height: 40px;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\css\courses.css
+
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\css\group.css
+/* Столбец «Действия» в таблице уже покрыт .remove-student-btn,
+     но зададим удобные отступы: */
+.table-wrapper td:last-child {
+	text-align: center;
+	width: 8rem;
+}
+
+/* ============================= */
+/* Стили для формы добавления студента */
+/* ============================= */
+
+/* Контейнер формы: делаем flex, выравниваем по центру, даём небольшой отступ снизу */
+/* #addStudentForm {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-sm);
+	margin-bottom: var(--sp-lg);
+} */
+
+/* Метка заголовка */
+.page-content h3 {
+	margin-bottom: var(--sp-sm);
+	color: var(--primary);
+	font-size: 1.125rem;
+}
+
+/* Поле ввода: растягиваем на всю оставшуюся ширину */
+#addStudentForm .input-add-student {
+	flex: 1 1 auto;
+	padding: var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--card-bg);
+	color: var(--text);
+	transition: border-color var(--trans), box-shadow var(--trans);
+}
+
+/* Фокус на поле ввода */
+#addStudentForm .input-add-student:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+/* Кнопка “Добавить”: не растягивается, красивая рамка и hover */
+#addStudentForm .submit-students-info {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: var(--sp-xs);
+	padding: var(--sp-sm) var(--sp-md);
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+}
+
+#addStudentForm .submit-students-info:hover {
+	opacity: 0.9;
+}
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\css\groups.css
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\css\index.css
+/* TILES */
+.tiles {
+	display: flex;
+	gap: var(--sp-md);
+	flex-wrap: wrap;
+	margin-top: var(--sp-lg);
+}
+.card {
+	flex: 1 1 30%;
+	background: var(--primary);
+	color: var(--bg);
+	text-align: center;
+	padding: var(--sp-lg) var(--sp-md);
+	border-radius: var(--radius);
+	text-decoration: none;
+	font-size: 1.2rem;
+	transition: background var(--trans);
+}
+.card:hover {
+	background: #3c3bd1;
+}
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\css\questions.css
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\css\tests.css
+/* Список вопросов внутри модалки */
+.quick-questions-list {
+	list-style: none;
+	max-height: 200px;
+	overflow-y: auto;
+	border-top: 1px solid var(--border);
+}
+
+.quick-questions-list .question-item {
+	padding: var(--sp-sm);
+	margin: 0;
+	border-bottom: 1px solid var(--border);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	position: relative;
+}
+
+.quick-questions-list .question-item:nth-child(even) {
+	background: var(--card-bg);
+}
+.quick-questions-list .question-item:hover {
+	background: rgba(79, 70, 229, 0.05);
+}
+.quick-questions-list .question-text {
+	flex: 1;
+	margin-right: var(--sp-md);
+	word-break: break-word;
+}
+.quick-questions-list .remove-quick-question {
+	background: transparent;
+	border: none;
+	color: var(--text-muted);
+	font-size: 1.2rem;
+	cursor: pointer;
+	transition: color var(--trans);
+}
+.quick-questions-list .remove-quick-question:hover {
+	color: var(--primary);
+}
+
+button.save-test {
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+	margin-right: var(--sp-xs);
+}
+
+button.del-test {
+	background: transparent;
+	border: 1px solid var(--text-muted);
+	color: var(--text-muted);
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: background var(--trans), color var(--trans), opacity var(--trans);
+}
+
+button.save-test:hover {
+	opacity: 0.8;
+}
+
+button.del-test:hover {
+	background: var(--text-muted);
+	color: var(--bg);
+	opacity: 0.8;
+}
+
+/* Кнопка "Сохранить все вопросы" */
+.save-questions {
+	margin: var(--sp-sm) var(--sp-md);
+}
+.save-questions[disabled] {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+/* Подтверждение закрытия без сохранения */
+.unsaved-confirm {
+	position: absolute;
+	top: var(--sp-sm);
+	right: var(--sp-sm);
+	background: var(--card-bg);
+	color: var(--text);
+	border: 1px solid var(--primary);
+	border-radius: var(--radius);
+	padding: var(--sp-sm);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+	animation: fadeIn 0.3s ease;
+}
+.unsaved-confirm p {
+	margin-bottom: var(--sp-sm);
+}
+.unsaved-confirm button {
+	margin-right: var(--sp-sm);
+	padding: var(--sp-xs) var(--sp-sm);
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+}
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* ======== МОДАЛЬНОЕ ОКНО ======== */
+.modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 2000;
+}
+.modal-overlay.open {
+	display: flex;
+}
+
+.modal-content {
+	background: var(--card-bg);
+	color: var(--text);
+	width: 90%;
+	max-width: 600px;
+	border-radius: var(--radius);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+/* Заголовок модалки */
+.modal-header,
+.modal-footer {
+	padding: var(--sp-sm) var(--sp-md);
+	background: var(--primary);
+	color: var(--bg);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.modal-header h3 {
+	margin: 0;
+	font-size: 1.25rem;
+}
+.modal-close {
+	background: none;
+	border: none;
+	font-size: 1.5rem;
+	color: var(--bg);
+	cursor: pointer;
+	line-height: 1;
+	transition: opacity var(--trans);
+}
+.modal-close:hover {
+	opacity: 0.8;
+}
+
+/* Тело модалки */
+.modal-body {
+	padding: var(--sp-md);
+	max-height: 60vh;
+	overflow-y: auto;
+}
+
+/* Форма внутри модалки */
+.quick-form .form-group {
+	margin-bottom: var(--sp-md);
+}
+.quick-form .form-group.inline {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-md);
+}
+.quick-form label {
+	font-weight: 500;
+}
+.quick-form textarea,
+.quick-form select,
+.quick-form input[type='text'] {
+	width: 100%;
+	padding: var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--card-bg);
+	color: var(--text);
+	transition: border-color var(--trans);
+}
+.quick-form textarea:focus,
+.quick-form select:focus,
+.quick-form input[type='text']:focus {
+	outline: none;
+	border-color: var(--primary);
+}
+
+/* Базовый класс кнопки */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--sp-xs);
+	padding: var(--sp-xs) var(--sp-sm);
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+}
+.btn:hover {
+	opacity: 0.8;
+}
+
+/* Футер модалки: кнопка «Сохранить всё» */
+.modal-footer .btn.save-questions {
+	padding: var(--sp-sm) var(--sp-lg);
+	background: var(--primary);
+	color: var(--bg);
+	font-weight: 600;
+	border: none;
+	border-radius: var(--radius);
+	display: inline-flex;
+	align-items: center;
+	gap: var(--sp-xs);
+	transition: background var(--trans), opacity var(--trans);
+}
+.modal-footer .btn.save-questions:hover {
+	background: #3c3bd1;
+	opacity: 0.9;
+}
+.modal-footer .btn.save-questions:disabled {
+	background: var(--border);
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\css\theory.css
+/* ======= Форма создания темы ======= */
+.cards-toolbar {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 20px;
+}
+.cards-toolbar select,
+.cards-toolbar input[type='text'] {
+	padding: 8px 12px;
+	border: 1px solid #444;
+	border-radius: 4px;
+	background-color: #2b2d3d;
+	color: #e0e0e0;
+	font-size: 1rem;
+}
+.cards-toolbar button.btn-primary {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 16px;
+	border: none;
+	border-radius: 6px;
+	background-color: #9b59b6;
+	color: #fff;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+.cards-toolbar button.btn-primary:hover {
+	background-color: #824fa3;
+}
+
+/* ======= Контейнер карточек ======= */
+.cards-container {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+	gap: 15px;
+}
+
+/* ======= Карточка темы ======= */
+.theory-card {
+	background-color: #2b2d3d;
+	border: 1px solid #444;
+	border-radius: 6px;
+	padding: 12px;
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+/* Кнопка удаления */
+.theory-card .delete-theory {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	background: transparent;
+	border: none;
+	color: #e74c3c;
+	font-size: 1.2rem;
+	line-height: 1;
+	cursor: pointer;
+}
+.theory-card .delete-theory:hover {
+	color: #c0392b;
+}
+
+/* Поле заголовка */
+.theory-card .title-input {
+	width: 100%;
+	padding: 6px 10px;
+	font-size: 1rem;
+	border: 1px solid #555;
+	border-radius: 4px;
+	background-color: #3a3c4e;
+	color: #e0e0e0;
+}
+
+/* Кнопка «Сохранить» */
+.theory-card .save-theory {
+	align-self: flex-start;
+	padding: 6px 12px;
+	border: 1px solid #555;
+	border-radius: 4px;
+	background-color: #3498db;
+	color: #fff;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+.theory-card .save-theory:hover {
+	background-color: #2980b9;
+}
+
+/* Кнопка «Редактировать содержание» */
+.theory-card .edit-content {
+	align-self: flex-start;
+	padding: 6px 12px;
+	border: 1px solid #555;
+	border-radius: 4px;
+	background-color: #9b59b6;
+	color: #fff;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+.theory-card .edit-content:hover {
+	background-color: #824fa3;
+}
+
+/* ======= Состояния пустого и ошибки ======= */
+.cards-container .empty,
+.cards-container .error {
+	grid-column: 1 / -1;
+	text-align: center;
+	padding: 20px;
+	border: 1px dashed #666;
+	border-radius: 4px;
+}
+.cards-container .error {
+	color: #e74c3c;
+}
+.cards-container .empty {
+	color: #aaa;
+}
+
+/* ======= Модалка ======= */
+.modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100;
+}
+.modal.hidden {
+	display: none;
+}
+.modal-overlay {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(30, 31, 46, 0.8);
+}
+.modal-content {
+	position: relative;
+	background-color: #2b2d3d;
+	padding: 20px;
+	border-radius: 6px;
+	width: 90%;
+	max-width: 600px;
+	max-height: 90%;
+	overflow-y: auto;
+	z-index: 10;
+}
+.modal-content h2 {
+	margin-bottom: 15px;
+	color: #caa2ff;
+}
+
+/* ======= Контролы редактора ======= */
+.editor-controls {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 15px;
+}
+.editor-controls button {
+	padding: 6px 10px;
+	border: 1px solid #555;
+	border-radius: 4px;
+	background-color: #3498db;
+	color: #fff;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+.editor-controls button:hover {
+	background-color: #2980b9;
+}
+
+/* ======= Поле редактора (контент) ======= */
+.editor-canvas {
+	background-color: #3a3c4e;
+	border: 1px solid #555;
+	border-radius: 4px;
+	padding: 10px;
+	min-height: 200px;
+	color: #e0e0e0;
+	margin-bottom: 15px;
+	overflow-wrap: break-word;
+}
+
+/* ======= Футер модалки ======= */
+.modal-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+}
+.modal-footer .btn {
+	padding: 6px 12px;
+	border: 1px solid #555;
+	border-radius: 4px;
+	background-color: #bbb;
+	color: #222;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+.modal-footer .btn-primary {
+	background-color: #9b59b6;
+	color: #fff;
+}
+.modal-footer .btn:hover {
+	background-color: #999;
+}
+.modal-footer .btn-primary:hover {
+	background-color: #824fa3;
+}
+
+/* Скрытый класс */
+.hidden {
+	display: none !important;
+}
+
+/* Overlay для загрузки */
+#loading-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(255, 255, 255, 0.8);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+}
+
+/* Спиннер */
+.spinner {
+	width: 3rem;
+	height: 3rem;
+	border: 0.5rem solid #e0e0e0;
+	border-top: 0.5rem solid #3498db;
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Toast-уведомления */
+#toast-container {
+	position: fixed;
+	top: 1rem;
+	right: 1rem;
+	z-index: 1100;
+}
+
+.toast {
+	margin-bottom: 0.5rem;
+	padding: 0.75rem 1rem;
+	border-radius: 0.25rem;
+	background: #333;
+	color: #fff;
+	opacity: 0.9;
+	transition: opacity 0.3s ease-out;
+}
+
+.toast.success {
+	background: #28a745;
+}
+.toast.error {
+	background: #dc3545;
+}
+
+/* Установим фиксированную высоту редактора */
+#editorContainer {
+	height: 400px;
+}
+
+.pdf-icon {
+	display: inline-block;
+	width: 1rem;
+	height: 1rem;
+	background: url('/static/teacherPanel/img/pdf-icon.svg') no-repeat center;
+	background-size: contain;
+	margin-right: 0.25rem;
+	vertical-align: text-bottom;
+}
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\html\courses.html
 <!DOCTYPE html>
 <html lang="ru">
 	<head>
@@ -5575,6 +6663,8 @@ body {
 		<title>Панель учителя — Курсы</title>
 		<script src="/static/js/theme-init.js"></script>
 		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/common.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/courses.css" />
 		<link
 			rel="stylesheet"
 			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
@@ -5586,10 +6676,13 @@ body {
 			<div class="logo" onclick="navigate('index.html')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/index.html">Главная</a>
-				<a href="index.html">Панель учителя</a>
-				<a href="courses.html" class="active">Курсы</a>
-				<a href="tests.html">Тесты</a>
-				<a href="questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/index.html">Панель учителя</a>
+				<a href="/static/teacherPanel/html/courses.html" class="active"
+					>Курсы</a
+				>
+				<a href="/static/teacherPanel/html/tests.html">Тесты</a>
+				<a href="/static/teacherPanel/html/questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/groups.html">Мои группы</a>
 			</nav>
 			<div class="actions">
 				<button id="theme-toggle" aria-label="Переключить тему"></button>
@@ -5625,7 +6718,151 @@ body {
 	</body>
 </html>
 
-Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\index.html
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\html\group.html
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Группа — Преподавательская панель</title>
+
+		<script src="/static/js/theme-init.js"></script>
+		<script src="/static/teacherPanel/script.js" defer></script>
+
+		<link rel="stylesheet" href="/static/adminPanel/style.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/common.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/group.css" />
+
+		<script src="/static/teacherPanel/js/teacherGroupDetail.js" defer></script>
+	</head>
+	<body>
+		<header class="navbar">
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
+			<nav class="nav-links">
+				<a href="/static/mainPage/index.html">Главная</a>
+				<a href="/static/teacherPanel/html/index.html">Панель учителя</a>
+				<a href="/static/teacherPanel/html/courses.html">Курсы</a>
+				<a href="/static/teacherPanel/html/tests.html">Тесты</a>
+				<a href="/static/teacherPanel/html/questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/groups.html">Мои группы</a>
+				<a href="/static/teacherPanel/html/group.html" class="active">Группа</a>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="user" />
+				</div>
+			</div>
+		</header>
+
+		<main class="page-content">
+			<h1>
+				Название группы:
+				<input
+					type="text"
+					id="groupNameInput"
+					value="..."
+					style="font-size: 1.2em; padding: 4px; width: 300px"
+				/>
+				<button id="saveNameBtn"><i class="fas fa-check"></i> Сохранить</button>
+			</h1>
+			<h3>Добавить студента</h3>
+			<form id="addStudentForm">
+				<input
+					class="input-add-student"
+					type="text"
+					name="student_email"
+					placeholder="Email студента"
+					required
+				/>
+				<button type="submit" class="submit-students-info">
+					<i class="fas fa-plus"></i> Добавить
+				</button>
+
+				<br />
+				<br />
+				<br />
+
+				<h2>Состав группы</h2>
+				<div class="table-wrapper">
+					<table>
+						<thead>
+							<tr>
+								<th>Email</th>
+								<th>ФИО</th>
+								<th>Действия</th>
+							</tr>
+						</thead>
+						<tbody id="studentsBody"></tbody>
+					</table>
+				</div>
+			</form>
+		</main>
+	</body>
+</html>
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\html\groups.html
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+		<title>Мои группы — Преподавательская панель</title>
+
+		<!-- 1) Смена темы и общий скрипт -->
+		<script src="/static/js/theme-init.js"></script>
+		<script src="/static/teacherPanel/script.js" defer></script>
+
+		<!-- 2) Стили -->
+		<link rel="stylesheet" href="/static/adminPanel/style.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/common.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/groups.css" />
+
+		<!-- 3) Скрипт, специфичный для «Моих групп» -->
+		<script src="/static/teacherPanel/js/teacherGroups.js" defer></script>
+	</head>
+	<body>
+		<header class="navbar">
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
+			<nav class="nav-links">
+				<a href="/static/mainPage/index.html">Главная</a>
+				<a href="/static/teacherPanel/html/index.html">Панель учителя</a>
+				<a href="/static/teacherPanel/html/courses.html">Курсы</a>
+				<a href="/static/teacherPanel/html/tests.html">Тесты</a>
+				<a href="/static/teacherPanel/html/questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/groups.html" class="active"
+					>Мои группы</a
+				>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="userDefault" />
+				</div>
+			</div>
+		</header>
+
+		<main class="page-content">
+			<h1>Мои группы</h1>
+			<div class="table-wrapper">
+				<table id="teacherGroupsTable">
+					<thead>
+						<tr>
+							<th>ID</th>
+							<th>Название</th>
+							<th>Действия</th>
+						</tr>
+					</thead>
+					<tbody id="teacherGroupsBody">
+						<!-- JS заполнит строки здесь -->
+					</tbody>
+				</table>
+			</div>
+		</main>
+	</body>
+</html>
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\html\index.html
 <!DOCTYPE html>
 <html lang="ru">
 	<head>
@@ -5636,6 +6873,8 @@ body {
 		<script src="/static/js/theme-init.js"></script>
 		<!-- 2. Стили панели учителя -->
 		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/common.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/index.css" />
 		<!-- 3. Font Awesome -->
 		<link
 			rel="stylesheet"
@@ -5650,15 +6889,18 @@ body {
 			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/index.html">Главная</a>
-				<a href="index.html" class="active">Панель учителя</a>
-				<a href="courses.html">Курсы</a>
-				<a href="tests.html">Тесты</a>
-				<a href="questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/index.html" class="active"
+					>Панель учителя</a
+				>
+				<a href="/static/teacherPanel/html/courses.html">Курсы</a>
+				<a href="/static/teacherPanel/html/tests.html">Тесты</a>
+				<a href="/static/teacherPanel/html/questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/groups.html">Мои группы</a>
 			</nav>
 			<div class="actions">
 				<button id="theme-toggle" aria-label="Переключить тему"></button>
 				<div class="user-icon" onclick="navigate('/profile')">
-					<img src="/static/img/userDefault.png" alt="userDefault" />
+					<img src="/static/img/userDefault.png" alt="avatar" />
 				</div>
 			</div>
 		</header>
@@ -5666,15 +6908,27 @@ body {
 		<main class="page-content">
 			<h1>Панель учителя</h1>
 			<div class="tiles">
-				<a class="card" href="courses.html">Управление курсами</a>
-				<a class="card" href="tests.html">Управление тестами</a>
-				<a class="card" href="questions.html">Управление вопросами</a>
+				<a class="card" href="/static/teacherPanel/html/courses.html"
+					>Управление курсами</a
+				>
+				<a class="card" href="/static/teacherPanel/html/tests.html"
+					>Управление тестами</a
+				>
+				<a class="card" href="/static/teacherPanel/html/questions.html"
+					>Управление вопросами</a
+				>
+				<a class="card" href="/static/teacherPanel/html/theory.html"
+					>Управление теорией</a
+				>
+				<a class="card" href="/static/teacherPanel/html/groups.html"
+					>Управление группами</a
+				>
 			</div>
 		</main>
 	</body>
 </html>
 
-Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\questions.html
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\html\questions.html
 <!DOCTYPE html>
 <html lang="ru">
 	<head>
@@ -5683,6 +6937,8 @@ body {
 		<title>Панель учителя — Вопросы</title>
 		<script src="/static/js/theme-init.js"></script>
 		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/common.css" />
+		<!-- <link rel="stylesheet" href="/static/teacherPanel/css/questions.css" /> -->
 		<link
 			rel="stylesheet"
 			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
@@ -5691,13 +6947,16 @@ body {
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo" onclick="navigate('index.html')">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/index.html">Главная</a>
-				<a href="index.html">Панель учителя</a>
-				<a href="courses.html">Курсы</a>
-				<a href="tests.html">Тесты</a>
-				<a href="questions.html" class="active">Вопросы</a>
+				<a href="/static/teacherPanel/html/index.html">Панель учителя</a>
+				<a href="/static/teacherPanel/html/courses.html">Курсы</a>
+				<a href="/static/teacherPanel/html/tests.html">Тесты</a>
+				<a href="/static/teacherPanel/html/questions.html" class="active"
+					>Вопросы</a
+				>
+				<a href="/static/teacherPanel/html/groups.html">Мои группы</a>
 			</nav>
 			<div class="actions">
 				<button id="theme-toggle" aria-label="Переключить тему"></button>
@@ -5763,7 +7022,289 @@ body {
 	</body>
 </html>
 
-Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\script.js
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\html\tests.html
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Панель учителя — Тесты</title>
+		<script src="/static/js/theme-init.js"></script>
+		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/common.css" />
+		<!-- <link rel="stylesheet" href="/static/teacherPanel/css/tests.css" /> -->
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+		/>
+		<script src="/static/teacherPanel/script.js" defer></script>
+		<!-- <script src="/static/teacherPanel/js/tests.js" defer></script> -->
+	</head>
+	<body>
+		<header class="navbar">
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
+			<nav class="nav-links">
+				<a href="/static/mainPage/index.html">Главная</a>
+				<a href="/static/teacherPanel/html/index.html">Панель учителя</a>
+				<a href="/static/teacherPanel/html/courses.html">Курсы</a>
+				<a href="/static/teacherPanel/html/tests.html" class="active">Тесты</a>
+				<a href="/static/teacherPanel/html/questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/groups.html">Мои группы</a>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="userDefault" />
+				</div>
+			</div>
+		</header>
+
+		<main class="page-content">
+			<h1>Управление тестами</h1>
+
+			<form id="newTestForm" class="course-form">
+				<select name="course_id" required>
+					<option value="">Выберите курс</option>
+				</select>
+				<input name="title" placeholder="Название теста" required />
+				<input name="description" placeholder="Описание теста" required />
+				<button type="submit"><i class="fas fa-plus"></i> Добавить</button>
+			</form>
+
+			<div class="table-wrapper">
+				<table id="testsTable">
+					<thead>
+						<tr>
+							<th>Название</th>
+							<th>Описание</th>
+							<th>Курс ID</th>
+							<th>Дата создания</th>
+							<th>Действия</th>
+						</tr>
+					</thead>
+					<tbody id="testsBody">
+						<!-- JS заполнит сюда строки вида:
+          <tr>
+            <td>Название теста</td>
+            <td>Описание теста</td>
+            <td>42</td>
+            <td>2025-05-10</td>
+            <td>
+              <button
+                class="btn"
+                data-action="open-quick-modal"
+                data-test-id="${test.id}"
+              >
+                Добавить вопросы
+              </button>
+            </td>
+          </tr>
+          --></tbody>
+				</table>
+			</div>
+		</main>
+
+		<!-- Быстрая модалка -->
+		<div id="questionModal" class="modal-overlay" style="display: none">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h3>Добавить вопросы</h3>
+					<button class="modal-close" id="closeQuestionModal">&times;</button>
+				</div>
+				<div class="modal-body">
+					<form id="quickQuestionForm" class="quick-form">
+						<input type="hidden" id="quickTestId" name="test_id" />
+						<div class="form-group">
+							<label for="question_text">Текст вопроса</label>
+							<textarea
+								id="question_text"
+								name="question_text"
+								required
+							></textarea>
+						</div>
+						<div class="form-group inline">
+							<label for="question_type">Тип вопроса</label>
+							<select id="question_type" name="question_type">
+								<option value="closed" selected>Закрытый</option>
+								<option value="open">Открытый</option>
+							</select>
+							<label id="multiLabel">
+								<input
+									type="checkbox"
+									id="multiple_choice"
+									name="multiple_choice"
+								/>
+								Несколько ответов
+							</label>
+							<input
+								type="text"
+								id="quick_correct_answer"
+								name="correct_answer_text"
+								placeholder="Правильный ответ (для открытого)"
+								style="display: none; margin-left: 1rem"
+							/>
+						</div>
+						<button type="submit" class="btn add-question">
+							<i class="fas fa-plus"></i> Добавить
+						</button>
+					</form>
+
+					<!-- Список вопросов -->
+					<ul id="quickQuestionsList" class="quick-questions-list">
+						<!-- Добавляется JS -->
+					</ul>
+				</div>
+
+				<div class="modal-footer">
+					<button class="btn save-questions" id="saveQuickQuestions" disabled>
+						<i class="fas fa-save"></i> Сохранить всё
+					</button>
+				</div>
+
+				<div id="unsavedConfirm" class="unsaved-confirm" style="display: none">
+					<p>Вы не сохранили изменения</p>
+					<button class="btn confirm-close" id="forceClose">
+						Всё равно закрыть
+					</button>
+					<button class="btn cancel-close" id="cancelClose">Отмена</button>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\html\theory.html
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Панель учителя — Теория</title>
+
+		<!-- Стили приложения -->
+		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/common.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/theory.css" />
+
+		<!-- FontAwesome -->
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+		/>
+
+		<!-- Quill WYSIWYG -->
+		<link
+			href="https://cdn.quilljs.com/1.3.6/quill.snow.css"
+			rel="stylesheet"
+		/>
+
+		<!-- Скрипты -->
+		<script src="/static/js/theme-init.js"></script>
+		<script src="https://cdn.quilljs.com/1.3.6/quill.min.js" defer></script>
+		<script src="/static/teacherPanel/script.js" defer></script>
+		<script src="/static/teacherPanel/js/common.js" defer></script>
+		<script src="/static/teacherPanel/js/theory.js" defer></script>
+	</head>
+
+	<body>
+		<header class="navbar">
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
+			<nav class="nav-links">
+				<a href="/static/mainPage/index.html">Главная</a>
+				<a href="/static/teacherPanel/html/index.html">Панель учителя</a>
+				<a href="/static/teacherPanel/html/courses.html">Курсы</a>
+				<a href="/static/teacherPanel/html/tests.html">Тесты</a>
+				<a href="/static/teacherPanel/html/questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/theory.html" class="active"
+					>Теория</a
+				>
+				<a href="/static/teacherPanel/html/groups.html">Мои группы</a>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="userDefault" />
+				</div>
+			</div>
+		</header>
+
+		<main class="page-content">
+			<h1 id="page-title">Управление теорией</h1>
+
+			<!-- Loading overlay и спиннер -->
+			<div id="loading-overlay" class="hidden">
+				<div class="spinner"></div>
+			</div>
+
+			<!-- Контейнер для тостов -->
+			<div id="toast-container" aria-live="polite"></div>
+
+			<!-- Форма быстрого создания новой темы -->
+			<form id="newTheoryForm" class="cards-toolbar">
+				<select id="theoryCourseSelect" name="course_id" required>
+					<option value="" disabled selected>Выберите курс</option>
+					<!-- JS вставит опции курсов -->
+				</select>
+				<input
+					type="text"
+					id="new-theory-title"
+					name="title"
+					placeholder="Название темы"
+					required
+				/>
+				<button type="submit" class="btn btn-primary">
+					<i class="fas fa-plus"></i> Добавить тему
+				</button>
+			</form>
+
+			<!-- Контейнер карточек для существующих тем -->
+			<div id="theoryCards" class="cards-container">
+				<!-- JS будет туда добавлять .theory-card -->
+			</div>
+
+			<!-- Модалка для редактирования содержимого темы -->
+			<div id="theoryModal" class="modal hidden">
+				<div class="modal-overlay"></div>
+				<div class="modal-content">
+					<h2>Редактировать содержание</h2>
+
+					<!-- Контейнер Quill -->
+					<div id="editorContainer">
+						<div id="editorToolbar">
+							<span class="ql-formats">
+								<select class="ql-header">
+									<option selected></option>
+									<option value="1"></option>
+									<option value="2"></option>
+								</select>
+								<button class="ql-bold"></button>
+								<button class="ql-italic"></button>
+							</span>
+							<span class="ql-formats">
+								<button class="ql-image"></button>
+								<button id="ql-insert-pdf" type="button">
+									<i class="fas fa-file-pdf"></i>
+								</button>
+							</span>
+						</div>
+						<div id="editorCanvas"></div>
+					</div>
+
+					<div class="modal-footer">
+						<button id="saveTheoryContent" class="btn btn-primary">
+							Сохранить
+						</button>
+						<button id="closeTheoryModal" class="btn" type="button">
+							Отмена
+						</button>
+					</div>
+				</div>
+			</div>
+		</main>
+	</body>
+</html>
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\js\common.js
 // -----------------------
 // 1. Навигация
 // -----------------------
@@ -5776,15 +7317,17 @@ function navigate(url) {
 // -----------------------
 async function loadUserIcon() {
 	try {
-		const res = await fetch('/api/profile', { credentials: 'include' })
-		if (!res.ok) return
+		const res = await fetch('/api/profile', { credentials: 'same-origin' })
+		if (!res.ok) return null // не залогинен или другая ошибка
 		const user = await res.json()
 		if (user.avatar_path) {
 			const img = document.querySelector('.user-icon img')
 			if (img) img.src = user.avatar_path
 		}
+		return user
 	} catch (err) {
 		console.error('Error loading user icon:', err)
+		return null
 	}
 }
 
@@ -5826,6 +7369,389 @@ if (toggle) {
 	})
 }
 
+/**
+ * Показывает уведомление (toast) в правом верхнем углу.
+ * @param {string} message - Сообщение для отображения.
+ * @param {'success' | 'error' | 'info'} type - Тип уведомления.
+ * @param {number} duration - Длительность показа в миллисекундах.
+ */
+function showToast(message, type = 'info', duration = 3000) {
+	const toastId = 'toast-' + Date.now()
+	const toastContainer =
+		document.getElementById('toast-container') || createToastContainer()
+
+	const toast = document.createElement('div')
+	toast.classList.add('toast', `toast-${type}`)
+	toast.id = toastId
+	toast.setAttribute('role', 'alert')
+	toast.setAttribute('aria-live', 'assertive')
+
+	const messageSpan = document.createElement('span')
+	messageSpan.textContent = message
+	toast.appendChild(messageSpan)
+
+	const closeButton = document.createElement('button')
+	closeButton.classList.add('toast-close-btn')
+	closeButton.innerHTML = '&times;'
+	closeButton.setAttribute('aria-label', 'Закрыть')
+	closeButton.onclick = () => {
+		toast.classList.remove('show')
+		setTimeout(() => toast.remove(), 300) // Дать время для анимации исчезновения
+	}
+	toast.appendChild(closeButton)
+
+	toastContainer.appendChild(toast)
+
+	// Показать toast
+	setTimeout(() => {
+		toast.classList.add('show')
+	}, 10) // Небольшая задержка для срабатывания CSS-transition
+
+	// Скрыть и удалить toast по истечении времени
+	setTimeout(() => {
+		toast.classList.remove('show')
+		setTimeout(() => toast.remove(), 300)
+	}, duration)
+}
+
+function createToastContainer() {
+	const container = document.createElement('div')
+	container.id = 'toast-container'
+	document.body.appendChild(container)
+	return container
+}
+
+async function apiFetch(url, options = {}) {
+	showLoader()
+	try {
+		const res = await fetch(url, options)
+		if (!res.ok) {
+			throw new Error(`Ошибка ${res.status}: ${res.statusText}`)
+		}
+		return await res.json()
+	} catch (err) {
+		console.error(err)
+		showToast(err.message, 'error')
+		// В случае GET возвращаем пустой массив/объект, в случае POST/PUT — null
+		return options.method && options.method !== 'GET' ? null : []
+	} finally {
+		hideLoader()
+	}
+}
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\js\courses.js
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\js\index.js
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\js\questions.js
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\js\teacherGroupDetail.js
+// Получение ID группы из URL
+function getGroupIdFromURL() {
+	const params = new URLSearchParams(window.location.search)
+	const id = params.get('id')
+	console.log('[DEBUG] groupId from URL:', id)
+	return id
+}
+
+// Загрузка и отрисовка состава группы
+async function initTeacherGroupDetail() {
+	console.log('[DEBUG] initTeacherGroupDetail() start')
+	const groupId = getGroupIdFromURL()
+	if (!groupId) {
+		console.error('[ERROR] no groupId in URL')
+		alert('Не указан ID группы в URL')
+		return
+	}
+
+	let res, group
+	try {
+		console.log(`[DEBUG] fetching /api/teacher/groups/${groupId}`)
+		res = await fetch(`/api/teacher/groups/${groupId}`, {
+			credentials: 'include',
+		})
+	} catch (err) {
+		console.error('[ERROR] fetch threw:', err)
+		alert('Ошибка сети при загрузке группы')
+		return
+	}
+
+	console.log('[DEBUG] fetch response status:', res.status)
+	if (!res.ok) {
+		const text = await res.text().catch(() => '')
+		console.error('[ERROR] fetch response not ok:', res.status, text)
+		alert('Ошибка загрузки группы: ' + text)
+		return
+	}
+
+	try {
+		group = await res.json()
+		console.log('[DEBUG] group JSON:', group)
+	} catch (err) {
+		console.error('[ERROR] JSON parse error:', err)
+		alert('Ошибка разбора ответа от сервера')
+		return
+	}
+
+	// ----------------------------------------
+	// 1) Название: помещаем в input
+	// ----------------------------------------
+	const nameInput = document.getElementById('groupNameInput')
+	if (!nameInput) {
+		console.error('[ERROR] #groupNameInput element not found')
+	} else {
+		nameInput.value = group.name
+		console.log('[DEBUG] set groupNameInput to:', group.name)
+	}
+
+	// ----------------------------------------
+	// 2) Студенты
+	// ----------------------------------------
+	const tbody = document.getElementById('studentsBody')
+	if (!tbody) {
+		console.error('[ERROR] #studentsBody element not found')
+		return
+	}
+	tbody.innerHTML = ''
+
+	if (!Array.isArray(group.students)) {
+		console.error('[ERROR] group.students is not array:', group.students)
+		tbody.innerHTML =
+			'<tr><td colspan="3">Неверный формат данных студентов</td></tr>'
+		return
+	}
+
+	if (group.students.length === 0) {
+		tbody.innerHTML =
+			'<tr><td colspan="3" style="text-align:center;">Нет студентов в группе</td></tr>'
+		console.log('[DEBUG] no students to render')
+	} else {
+		group.students.forEach(s => {
+			console.log('[DEBUG] render student:', s)
+			const tr = document.createElement('tr')
+			tr.innerHTML = `
+		  <td>${s.email}</td>
+		  <td>${s.full_name}</td>
+		  <td>
+			<button class="remove-student-btn" data-id="${s.id}">
+			  <i class="fas fa-trash"></i> Удалить
+			</button>
+		  </td>`
+			tbody.appendChild(tr)
+		})
+	}
+}
+
+// === Основной вход ===
+document.addEventListener('DOMContentLoaded', () => {
+	console.log('[DEBUG] DOMContentLoaded')
+	initTeacherGroupDetail()
+
+	// ----------------------------------------
+	// Обработчик: сохранить новое название
+	// ----------------------------------------
+	const saveBtn = document.getElementById('saveNameBtn')
+	const nameInput = document.getElementById('groupNameInput')
+	if (saveBtn && nameInput) {
+		saveBtn.addEventListener('click', async () => {
+			const groupId = getGroupIdFromURL()
+			const newName = nameInput.value.trim()
+			if (!newName) {
+				alert('Название не может быть пустым')
+				return
+			}
+
+			console.log('[DEBUG] saving new group name:', newName)
+			let res, text
+			try {
+				res = await fetch(`/api/teacher/groups/${groupId}`, {
+					method: 'PUT',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ name: newName }),
+				})
+			} catch (err) {
+				console.error('[ERROR] PUT fetch threw:', err)
+				alert('Ошибка сети при сохранении названия')
+				return
+			}
+
+			console.log('[DEBUG] save name response status:', res.status)
+			if (!res.ok) {
+				text = await res.text().catch(() => '')
+				console.error('[ERROR] save name failed:', res.status, text)
+				alert('Ошибка сохранения: ' + text)
+				return
+			}
+			console.log('[DEBUG] save name succeeded')
+			alert('Название группы сохранено')
+		})
+	} else {
+		console.error('[ERROR] saveNameBtn or groupNameInput not found')
+	}
+
+	// ----------------------------------------
+	// Обработчик: удалить студента
+	// ----------------------------------------
+	const studentsBody = document.getElementById('studentsBody')
+	if (studentsBody) {
+		studentsBody.addEventListener('click', async e => {
+			const btn = e.target.closest('.remove-student-btn')
+			if (!btn) return
+			console.log('[DEBUG] remove-student-btn clicked, id=', btn.dataset.id)
+			if (!confirm('Удалить студента из группы?')) return
+
+			const studentId = +btn.dataset.id
+			const groupId = getGroupIdFromURL()
+			console.log('[DEBUG] sending DELETE student-groups', {
+				student_id: studentId,
+				group_id: groupId,
+			})
+
+			let res, text
+			try {
+				res = await fetch('/api/teacher/student-groups', {
+					method: 'DELETE',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ student_id: studentId, group_id: +groupId }),
+				})
+			} catch (err) {
+				console.error('[ERROR] DELETE fetch threw:', err)
+				alert('Ошибка сети при удалении студента')
+				return
+			}
+
+			console.log('[DEBUG] DELETE response status:', res.status)
+			if (!res.ok) {
+				text = await res.text().catch(() => '<no body>')
+				console.error('[ERROR] remove failed:', res.status, text)
+				alert('Ошибка удаления: ' + text)
+				return
+			}
+
+			console.log('[DEBUG] remove succeeded, reloading detail')
+			await initTeacherGroupDetail()
+		})
+	} else {
+		console.error('[ERROR] studentsBody not found')
+	}
+
+	// ----------------------------------------
+	// Обработчик: добавить студента
+	// ----------------------------------------
+	const addForm = document.getElementById('addStudentForm')
+	if (addForm) {
+		addForm.addEventListener('submit', async e => {
+			e.preventDefault()
+			console.log('[DEBUG] addStudentForm submit')
+			const email = addForm.student_email.value.trim()
+			const groupId = getGroupIdFromURL()
+
+			if (!email) {
+				console.warn('[WARN] email empty')
+				alert('Введите email студента')
+				return
+			}
+
+			console.log('[DEBUG] sending PUT student-groups', {
+				student_email: email,
+				group_id: +groupId,
+			})
+
+			let res, text
+			try {
+				res = await fetch('/api/teacher/student-groups', {
+					method: 'PUT',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ student_email: email, group_id: +groupId }),
+				})
+			} catch (err) {
+				console.error('[ERROR] PUT fetch threw:', err)
+				alert('Ошибка сети при добавлении студента')
+				return
+			}
+
+			console.log('[DEBUG] PUT response status:', res.status)
+			if (!res.ok) {
+				text = await res.text().catch(() => '<no body>')
+				console.error('[ERROR] add failed:', res.status, text)
+				alert('Ошибка добавления: ' + text)
+				return
+			}
+
+			console.log('[DEBUG] add succeeded, reloading detail')
+			addForm.reset()
+			await initTeacherGroupDetail()
+		})
+	} else {
+		console.error('[ERROR] addStudentForm not found')
+	}
+})
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\js\teacherGroups.js
+// Инициализация страницы "Мои группы"
+async function initTeacherGroups() {
+	const tbody = document.getElementById('teacherGroupsBody')
+	tbody.innerHTML = 'Загрузка...'
+
+	try {
+		const res = await fetch('/api/teacher/groups', { credentials: 'include' })
+		if (!res.ok) throw new Error('Не удалось загрузить список групп')
+
+		const groups = await res.json()
+
+		if (!groups || !Array.isArray(groups)) {
+			throw new Error('Получены некорректные данные')
+		}
+
+		tbody.innerHTML = ''
+
+		if (groups.length === 0) {
+			tbody.innerHTML =
+				'<tr><td colspan="3" style="text-align:center;">Нет доступных групп</td></tr>'
+			return
+		}
+
+		groups.forEach(g => {
+			const tr = document.createElement('tr')
+			tr.innerHTML = `
+		  <td>${g.id}</td>
+		  <td>${g.name}</td>
+		  <td>
+			<button class="view-group-btn" data-id="${g.id}">
+			  <i class="fas fa-eye"></i> Просмотреть
+			</button>
+		  </td>
+		`
+			tbody.appendChild(tr)
+		})
+	} catch (err) {
+		tbody.innerHTML = '<tr><td colspan="3">Ошибка загрузки</td></tr>'
+		console.error(err)
+	}
+}
+
+// Обработка клика "Просмотреть"
+document.addEventListener('click', e => {
+	const btn = e.target.closest('.view-group-btn')
+	if (!btn) return
+
+	const id = btn.dataset.id
+	if (id) {
+		window.location.href = `/static/teacherPanel/html/group.html?id=${id}`
+	}
+})
+
+// Запуск при загрузке
+document.addEventListener('DOMContentLoaded', () => {
+	if (document.getElementById('teacherGroupsBody')) {
+		initTeacherGroups()
+	}
+})
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\js\tests.js
 // ——— State и функции для модалки быстрых вопросов ———
 let quickIsDirty = false
 
@@ -5893,7 +7819,7 @@ async function saveQuickQuestions() {
 				const textEl = opt.querySelector('.option-text')
 				if (!textEl) continue
 
-				const correct = opt.dataset.correct === 'true'
+				const isCorrect = opt.dataset.correct === 'true'
 
 				await fetch('/api/teacher/options', {
 					method: 'POST',
@@ -5902,7 +7828,7 @@ async function saveQuickQuestions() {
 					body: JSON.stringify({
 						question_id: questionId,
 						option_text: textEl.textContent.trim(),
-						correct_choice: correct,
+						is_correct: isCorrect,
 					}),
 				})
 			}
@@ -6062,9 +7988,329 @@ async function loadQuestions(testId) {
 	}
 }
 
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\js\theory.js
+// Показ/скрытие спиннера
+function showLoader() {
+	document.getElementById('loading-overlay').classList.remove('hidden')
+}
+function hideLoader() {
+	document.getElementById('loading-overlay').classList.add('hidden')
+}
+
+// Универсальная функция тостов
+function showToast(message, type = 'success', timeout = 3000) {
+	const container = document.getElementById('toast-container')
+	const toast = document.createElement('div')
+	toast.className = `toast ${type}`
+	toast.textContent = message
+	container.appendChild(toast)
+	setTimeout(() => {
+		toast.style.opacity = '0'
+		setTimeout(() => container.removeChild(toast), 300)
+	}, timeout)
+}
+
+Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\script.js
 // -----------------------
-// initQuestions
+// 1. Навигация
 // -----------------------
+function navigate(url) {
+	window.location.href = url
+}
+
+// -----------------------
+// 2. Загрузка аватарки
+// -----------------------
+async function loadUserIcon() {
+	try {
+		const res = await fetch('/api/profile', { credentials: 'same-origin' })
+		if (!res.ok) return null // не залогинен или другая ошибка
+		const user = await res.json()
+		if (user.avatar_path) {
+			const img = document.querySelector('.user-icon img')
+			if (img) img.src = user.avatar_path
+		}
+		return user
+	} catch (err) {
+		console.error('Error loading user icon:', err)
+		return null
+	}
+}
+
+/* -----------------------
+   1. Обновление иконки темы
+------------------------ */
+function updateToggleIcon(theme) {
+	const btn = document.getElementById('theme-toggle')
+	if (!btn) return
+	btn.innerHTML = ''
+	const icon = document.createElement('img')
+	icon.alt = 'Toggle theme'
+	icon.src =
+		theme === 'dark'
+			? '/static/img/light-theme.png'
+			: '/static/img/dark-theme.png'
+	btn.appendChild(icon)
+}
+
+/* --------------------
+       5. Тема
+  --------------------- */
+const stored = localStorage.getItem('theme')
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+const theme = stored || (prefersDark ? 'dark' : 'light')
+document.documentElement.setAttribute('data-theme', theme)
+updateToggleIcon(theme)
+
+const toggle = document.getElementById('theme-toggle')
+if (toggle) {
+	toggle.addEventListener('click', () => {
+		const next =
+			document.documentElement.getAttribute('data-theme') === 'dark'
+				? 'light'
+				: 'dark'
+		document.documentElement.setAttribute('data-theme', next)
+		localStorage.setItem('theme', next)
+		updateToggleIcon(next)
+	})
+}
+
+// ——— State и функции для модалки быстрых вопросов ———
+let quickIsDirty = false
+
+function openQuestionModal(testId) {
+	document.getElementById('quickTestId').value = testId
+	document.getElementById('questionModal').style.display = 'flex'
+	quickIsDirty = false
+	document.getElementById('saveQuickQuestions').disabled = true
+	clearQuickModal()
+}
+
+function clearQuickModal() {
+	document.getElementById('quickQuestionsList').innerHTML = ''
+	document.getElementById('quickQuestionForm').reset()
+	document.getElementById('quick_correct_answer').style.display = 'none'
+}
+
+function tryCloseModal() {
+	if (quickIsDirty) {
+		document.getElementById('unsavedConfirm').style.display = 'block'
+	} else {
+		forceCloseModal()
+	}
+}
+
+function forceCloseModal() {
+	document.getElementById('questionModal').style.display = 'none'
+	document.getElementById('unsavedConfirm').style.display = 'none'
+	clearQuickModal()
+	location.reload()
+}
+
+function cancelClose() {
+	document.getElementById('unsavedConfirm').style.display = 'none'
+}
+
+async function saveQuickQuestions() {
+	const testId = +document.getElementById('quickTestId').value
+	const items = document.querySelectorAll('#quickQuestionsList .question-item')
+
+	for (let li of items) {
+		// Сохраняем сам вопрос
+		const qRes = await fetch('/api/teacher/questions', {
+			method: 'POST',
+			credentials: 'include',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				test_id: testId,
+				question_text: li.querySelector('.question-text')?.textContent ?? '',
+				question_type: li.dataset.type,
+				multiple_choice: li.dataset.multi === 'true',
+				correct_answer_text:
+					li.dataset.type === 'open' ? li.dataset.correct : null,
+			}),
+		})
+
+		if (!qRes.ok) throw new Error('Не удалось сохранить вопрос')
+
+		const { id: questionId } = await qRes.json()
+
+		// Сохраняем варианты
+		if (li.dataset.type === 'closed') {
+			const opts = li.querySelectorAll('li.option-item')
+			for (let opt of opts) {
+				const textEl = opt.querySelector('.option-text')
+				if (!textEl) continue
+
+				const isCorrect = opt.dataset.correct === 'true'
+
+				await fetch('/api/teacher/options', {
+					method: 'POST',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						question_id: questionId,
+						option_text: textEl.textContent.trim(),
+						is_correct: isCorrect,
+					}),
+				})
+			}
+		}
+	}
+
+	quickIsDirty = false
+	document.getElementById('saveQuickQuestions').disabled = true
+	forceCloseModal()
+}
+
+function renumberQuestions() {
+	document
+		.querySelectorAll('#quickQuestionsList .question-item')
+		.forEach((li, idx) => {
+			const num = li.querySelector('.question-number')
+			if (num) num.textContent = `${idx + 1}.`
+		})
+}
+
+// -----------------------
+// loadOptions
+// -----------------------
+async function loadOptions(questionId) {
+	const tbodyOpts = document.getElementById(`opts-${questionId}`)
+	if (!tbodyOpts) return
+	tbodyOpts.innerHTML = ''
+	try {
+		const res = await fetch(`/api/teacher/options?question_id=${questionId}`, {
+			credentials: 'include',
+		})
+		if (!res.ok) throw ''
+		const opts = await res.json()
+		opts.forEach(o => {
+			const tr = document.createElement('tr')
+			tr.innerHTML = `
+        <td><input class="edit-opt-text" data-id="${o.id}" value="${
+				o.option_text
+			}"></td>
+        <td><input type="checkbox" class="edit-opt-correct" data-id="${o.id}"${
+				o.is_correct ? ' checked' : ''
+			}></td>
+        <td>
+          <button class="save-option" data-id="${
+						o.id
+					}"><i class="fas fa-save"></i></button>
+          <button class="del-option" data-id="${
+						o.id
+					}"><i class="fas fa-trash"></i></button>
+        </td>`
+			tbodyOpts.appendChild(tr)
+		})
+	} catch {
+		console.error('Ошибка загрузки вариантов')
+	}
+}
+
+async function loadQuestions(testId) {
+	const tbody = document.getElementById('questionsBody')
+	tbody.innerHTML = ''
+	if (!testId) return
+	try {
+		const res = await fetch(`/api/teacher/questions?test_id=${testId}`, {
+			credentials: 'include',
+		})
+		if (!res.ok) throw ''
+		const qs = await res.json()
+		qs.forEach(q => {
+			// Основная строка
+			const tr = document.createElement('tr')
+			tr.innerHTML = `
+        <td><input class="edit-text" data-id="${q.id}" value="${
+				q.question_text
+			}"></td>
+        <td>
+          <select class="edit-type" data-id="${q.id}">
+            <option value="open"${
+							q.question_type === 'open' ? ' selected' : ''
+						}>Открытый</option>
+            <option value="closed"${
+							q.question_type === 'closed' ? ' selected' : ''
+						}>Закрытый</option>
+          </select>
+        </td>
+        <td>
+  <input type="checkbox" class="edit-multi ${
+		q.question_type === 'open' ? 'checkbox-disabled' : ''
+	}" 
+         data-id="${q.id}" 
+         ${q.multiple_choice ? 'checked' : ''} 
+         ${q.question_type === 'open' ? 'disabled' : ''}>
+</td>
+
+        <td>${q.test_id}</td>
+        <td>${new Date(q.created_at).toLocaleDateString()}</td>
+        <td>
+          <button class="manage-options"
+                  data-id="${q.id}"
+                  data-type="${q.question_type}">
+            <i class="fas fa-list"></i> Варианты
+          </button>
+        </td>
+        <td class="action-cell">
+          <button class="save-question" data-id="${
+						q.id
+					}"><i class="fas fa-save"></i> Сохранить</button>
+          <button class="del-question"  data-id="${
+						q.id
+					}"><i class="fas fa-trash"></i> Удалить</button>
+        </td>`
+			tbody.appendChild(tr)
+
+			// Скрытая строка
+			const trOpts = document.createElement('tr')
+			trOpts.className = 'options-row'
+			trOpts.dataset.qid = q.id
+			trOpts.dataset.type = q.question_type
+			trOpts.style.display = 'none'
+
+			if (q.question_type === 'closed') {
+				trOpts.innerHTML = `
+          <td colspan="7">
+            <div class="options-wrapper" style="min-height:100px; padding:10px;">
+              <table class="options-table">
+                <thead><tr><th>Вариант</th><th>Правильный?</th><th>Действия</th></tr></thead>
+                <tbody id="opts-${q.id}"></tbody>
+              </table>
+              <div class="option-form">
+                <input type="text" class="new-opt-text" placeholder="Новый вариант">
+                <input type="checkbox" class="new-opt-correct">
+                <button class="save-new-option" data-id="${q.id}"><i class="fas fa-plus"></i></button>
+              </div>
+            </div>
+          </td>`
+			} else {
+				trOpts.innerHTML = `
+          <td colspan="7">
+      <div class="options-wrapper">
+        <div class="open-answer-wrapper">
+          <label>Правильный ответ:</label>
+          <input type="text" class="open-answer-input" value="${
+						q.correct_answer_text || ''
+					}" />
+              <button class="save-open-answer" data-id="${
+								q.id
+							}">Сохранить</button>
+              <button class="delete-open-answer" data-id="${
+								q.id
+							}">Удалить</button>
+            </div>
+          </td>`
+			}
+			tbody.appendChild(trOpts)
+		})
+	} catch {
+		console.error('Ошибка загрузки вопросов')
+	}
+}
+
 async function initQuestions() {
 	const select = document.getElementById('testSelect')
 
@@ -6217,7 +8463,7 @@ async function initQuestions() {
 			return
 		}
 
-		// d) Сохранить отредактированный вопрос
+		// d) Сохранить отредактированный вопрос вместе со всеми вариантами
 		if (e.target.matches('.save-question')) {
 			const qid = e.target.dataset.id
 			const row = e.target.closest('tr')
@@ -6232,6 +8478,8 @@ async function initQuestions() {
 				question_type: type,
 				multiple_choice: multi,
 			}
+
+			// Для open‑вопросов — корректный ответ
 			if (type === 'open') {
 				const optionsRow = document.querySelector(
 					`.options-row[data-qid="${qid}"]`
@@ -6239,19 +8487,55 @@ async function initQuestions() {
 				const input = optionsRow?.querySelector('.open-answer-input')
 				if (input) payload.correct_answer_text = input.value.trim()
 			}
+
 			try {
-				const res = await fetch('/api/teacher/questions', {
+				// 1) Обновляем сам вопрос
+				const resQ = await fetch('/api/teacher/questions', {
 					method: 'PUT',
 					credentials: 'include',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload),
 				})
-				if (!res.ok) throw new Error(await res.text())
-				alert('Вопрос сохранён')
-				loadQuestions(select.value)
+				if (!resQ.ok) throw new Error(await resQ.text())
+
+				// 2) Для закрытых вопросов — обновляем все варианты
+				if (type === 'closed') {
+					const tbodyOpts = document.getElementById(`opts-${qid}`)
+					if (tbodyOpts) {
+						for (let rowOpt of tbodyOpts.querySelectorAll('tr')) {
+							const oid = rowOpt.querySelector('.edit-opt-text')?.dataset.id
+							if (!oid) continue
+
+							const optionText = rowOpt
+								.querySelector(`.edit-opt-text[data-id="${oid}"]`)
+								.value.trim()
+							const isCorrect = rowOpt.querySelector(
+								`.edit-opt-correct[data-id="${oid}"]`
+							).checked
+
+							const resO = await fetch('/api/teacher/options', {
+								method: 'PUT',
+								credentials: 'include',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({
+									id: +oid,
+									option_text: optionText,
+									is_correct: isCorrect,
+								}),
+							})
+							if (!resO.ok) {
+								const txt = await resO.text()
+								throw new Error(`Ошибка сохранения варианта ${oid}: ${txt}`)
+							}
+						}
+					}
+				}
+
+				alert('Вопрос и варианты сохранены')
+				await loadQuestions(select.value)
 			} catch (err) {
 				console.error(err)
-				alert('Не удалось сохранить вопрос')
+				alert(err.message || 'Не удалось сохранить вопрос и варианты')
 			}
 			return
 		}
@@ -6280,7 +8564,6 @@ async function initQuestions() {
 		// f) Создать новый вариант ответа для закрытого вопроса
 		if (e.target.matches('.save-new-option')) {
 			const qid = e.target.dataset.id
-			// находим непосредственно <tr> с формой
 			const row = e.target.closest('tr')
 			const textEl = row.querySelector('.new-opt-text')
 			const correctEl = row.querySelector('.new-opt-correct')
@@ -6302,10 +8585,8 @@ async function initQuestions() {
 					}),
 				})
 				if (!res.ok) throw new Error(await res.text())
-				// очистка формы
 				textEl.value = ''
 				correctEl.checked = false
-				// обновляем список вариантов
 				await loadOptions(qid)
 			} catch (err) {
 				console.error(err)
@@ -6645,128 +8926,324 @@ async function initTheory() {
 		await reloadTheoryList(_theoryCourseId)
 	})
 
-	// 5) Делегировать клики по кнопкам Сохранить и Удалить
-	document.getElementById('theoryBody').addEventListener('click', async e => {
-		const tr = e.target.closest('tr[data-id]')
-		if (!tr) return
-		const id = +tr.dataset.id
-
-		// Сохранить изменения
-		if (e.target.closest('.save-topic')) {
-			const title = tr.querySelector('.edit-title').value.trim()
-			const content = tr.querySelector('.edit-content').value.trim()
-			const orig = _theoryList.find(i => i.id === id) || {}
-			const payload = {
-				title,
-				content,
-				sort_order: orig.sort_order || 0,
-			}
-
+	// 5) Обработка формы создания новой темы
+	const newForm = document.getElementById('newTheoryForm')
+	if (newForm) {
+		newForm.addEventListener('submit', async e => {
+			e.preventDefault()
+			const title = e.target.title.value.trim()
+			if (!title) return
 			try {
 				const res = await fetch(
-					`/api/teacher/courses/${_theoryCourseId}/theory/${id}`,
+					`/api/teacher/courses/${_theoryCourseId}/theory`,
 					{
-						method: 'PUT',
+						method: 'POST',
 						credentials: 'include',
 						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(payload),
+						body: JSON.stringify({ title }),
 					}
 				)
 				if (!res.ok) throw new Error(await res.text())
-				alert('Тема сохранена')
+				e.target.reset()
 				await reloadTheoryList(_theoryCourseId)
+				showToast('Тема успешно создана!', 'success')
 			} catch (err) {
-				console.error('Ошибка сохранения темы:', err)
-				alert('Ошибка сохранения: ' + err.message)
+				console.error('Ошибка создания темы:', err)
+				showToast('Ошибка при создании темы: ' + err.message, 'error')
 			}
-			return
-		}
+		})
+	}
+}
 
-		// Удалить тему
-		if (e.target.closest('.delete-topic')) {
+// -----------------------
+// reloadTheoryList — загрузить список тем и отрисовать карточки
+// -----------------------
+async function reloadTheoryList(courseId) {
+	const container = document.getElementById('theoryCards')
+	container.innerHTML = ''
+	// try {
+	// 	const res = await fetch(`/api/courses/${courseId}/theory`, {
+	// 		credentials: 'include',
+	// 	})
+	// 	if (!res.ok) throw new Error(`Status ${res.status}`)
+	// 	const list = await res.json()
+	// 	if (!Array.isArray(list) || list.length === 0) {
+	// 		container.innerHTML = '<p class="empty">Тем ещё нет. Создайте первую!</p>'
+	// 		return
+	// 	}
+	// 	renderTheoryCards(list)
+	// } catch (err) {
+	// 	console.error(err)
+	// 	container.innerHTML = `<p class="error">Не удалось загрузить темы: ${err.message}</p>`
+	// 	showToast(err.message, 'error')
+	// }
+
+	let res
+	try {
+		res = await fetch(`/api/courses/${courseId}/theory`, {
+			credentials: 'include',
+		})
+	} catch (err) {
+		console.error('Сетевая ошибка при загрузке тем:', err)
+		container.innerHTML =
+			'<p class="error">Не удалось загрузить темы (сетевая ошибка).</p>'
+		showToast('Не удалось загрузить темы (сетевая ошибка).', 'error')
+		return
+	}
+
+	if (!res.ok) {
+		const errorText = `Ошибка ${res.status} при загрузке тем: ${res.statusText}`
+		console.error(errorText)
+		container.innerHTML = `<p class="error">Не удалось загрузить темы (код ${res.status}).</p>`
+		showToast(`Не удалось загрузить темы (код ${res.status}).`, 'error') // <--- ИЗМЕНЕНИЕ
+		return
+	}
+
+	let list
+	try {
+		list = await res.json()
+	} catch (err) {
+		console.error('Ошибка разбора JSON от сервера:', err)
+		container.innerHTML = '<p class="error">Некорректный ответ сервера.</p>'
+		showToast('Некорректный ответ сервера.', 'error') // <--- ИЗМЕНЕНИЕ
+		return
+	}
+
+	_theoryList = list // обновляем глобальный массив, если нужен
+
+	if (list.length === 0) {
+		container.innerHTML = '<p class="empty">Тем ещё нет. Создайте первую!</p>'
+		return
+	}
+
+	list.forEach(item => {
+		const card = document.createElement('div')
+		card.classList.add('theory-card')
+		card.dataset.id = item.id
+
+		// === Удаление темы ===
+		const delBtn = document.createElement('button')
+		delBtn.classList.add('delete-theory')
+		delBtn.textContent = '×'
+		delBtn.addEventListener('click', async () => {
 			if (!confirm('Удалить тему?')) return
 			try {
-				const res = await fetch(
-					`/api/teacher/courses/${_theoryCourseId}/theory/${id}`,
-					{
-						method: 'DELETE',
-						credentials: 'include',
-					}
-				)
-				if (!res.ok) throw new Error(await res.text())
-				await reloadTheoryList(_theoryCourseId)
+				const delRes = await fetch(`/api/teacher/theory/${item.id}`, {
+					method: 'DELETE',
+					credentials: 'include',
+				})
+				if (!delRes.ok) throw new Error(`Код ${delRes.status}`)
+				await reloadTheoryList(courseId)
 			} catch (err) {
-				console.error('Ошибка удаления темы:', err)
-				alert('Ошибка удаления: ' + err.message)
+				console.error('Ошибка при удалении темы:', err)
+				alert('Не удалось удалить тему: ' + err.message)
 			}
-			return
+		})
+		card.appendChild(delBtn)
+
+		// === Редактирование заголовка ===
+		const titleInput = document.createElement('input')
+		titleInput.type = 'text'
+		titleInput.classList.add('title-input')
+		titleInput.value = item.title
+		card.appendChild(titleInput)
+
+		// === Кнопка «Сохранить» ===
+		const saveBtn = document.createElement('button')
+		saveBtn.classList.add('save-theory')
+		saveBtn.textContent = 'Сохранить'
+		saveBtn.addEventListener('click', async () => {
+			const newTitle = titleInput.value.trim()
+			if (!newTitle) {
+				alert('Заголовок не может быть пустым')
+				titleInput.value = item.title
+				return
+			}
+			if (newTitle === item.title) {
+				// ничего не менялось
+				return
+			}
+			try {
+				const updRes = await fetch(`/api/teacher/theory/${item.id}`, {
+					method: 'PUT',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ title: newTitle }),
+				})
+				if (!updRes.ok) throw new Error(`Код ${updRes.status}`)
+				item.title = newTitle // обновляем локальную копию
+				saveBtn.textContent = 'Сохранено'
+				setTimeout(() => {
+					saveBtn.textContent = 'Сохранить'
+				}, 1000)
+			} catch (err) {
+				console.error('Ошибка при сохранении темы:', err)
+				alert('Не удалось сохранить: ' + err.message)
+				titleInput.value = item.title // откат
+			}
+		})
+		card.appendChild(saveBtn)
+
+		// === Редактирование содержания ===
+		const editBtn = document.createElement('button')
+		editBtn.classList.add('edit-content', 'btn')
+		editBtn.textContent = 'Редактировать содержание'
+		editBtn.addEventListener('click', () => openTheoryModal(item.id))
+		card.appendChild(editBtn)
+
+		container.appendChild(card)
+	})
+}
+
+let currentTheoryId = null
+
+async function openTheoryModal(id) {
+	currentTheoryId = id
+	const res = await fetch(`/api/theory/${id}`, { credentials: 'include' })
+	const data = await res.json()
+	const canvas = document.getElementById('editorCanvas')
+	canvas.innerHTML = data.content || ''
+
+	document.getElementById('theoryModal').classList.remove('hidden')
+	const overlay = document.querySelector('#theoryModal .modal-overlay')
+	overlay.addEventListener('click', () => {
+		document.getElementById('theoryModal').classList.add('hidden')
+	})
+	// и закрытие по Esc
+	document.addEventListener('keydown', function onEsc(e) {
+		if (e.key === 'Escape') {
+			document.getElementById('theoryModal').classList.add('hidden')
+			document.removeEventListener('keydown', onEsc)
 		}
 	})
 }
 
-// -----------------------
-// reloadTheoryList — загрузить список тем и отрисовать таблицу
-// -----------------------
-async function reloadTheoryList(courseId) {
-	const tbody = document.getElementById('theoryBody')
-	if (!tbody) return
-	tbody.innerHTML = '' // очистка
+// Загрузка PDF/изображений
+// document
+// 	.getElementById('uploadPdfBtn')
+// 	.addEventListener('click', () => document.getElementById('pdfInput').click())
+// document
+// 	.getElementById('uploadImgBtn')
+// 	.addEventListener('click', () => document.getElementById('imgInput').click())
 
-	let list
-	try {
-		// правильный публичный эндпоинт для тем
-		const res = await fetch(`/api/courses/${courseId}/theory`, {
-			credentials: 'include',
-		})
-		if (!res.ok) throw new Error(`Status ${res.status}`)
-		list = await res.json()
-	} catch (err) {
-		console.error('Ошибка загрузки тем:', err)
-		return
+function insertHtmlAtCursor(html) {
+	const sel = window.getSelection()
+	if (!sel.rangeCount) return
+	const range = sel.getRangeAt(0)
+	range.deleteContents()
+	const el = document.createElement('div')
+	el.innerHTML = html
+	const frag = document.createDocumentFragment()
+	let node, lastNode
+	while ((node = el.firstChild)) {
+		lastNode = frag.appendChild(node)
 	}
-
-	_theoryList = Array.isArray(list) ? list : []
-	renderTheoryTable()
+	range.insertNode(frag)
+	// Сдвинуть курсор после вставленного фрагмента
+	if (lastNode) {
+		range.setStartAfter(lastNode)
+		sel.removeAllRanges()
+		sel.addRange(range)
+	}
 }
 
-// -----------------------
-// renderTheoryTable — строит HTML строк для каждой темы
-// -----------------------
-function renderTheoryTable() {
-	const tbody = document.getElementById('theoryBody')
-	if (_theoryList.length === 0) {
-		tbody.innerHTML =
-			'<tr><td colspan="7" style="text-align:center">Нет тем</td></tr>'
-		return
-	}
+async function handleFileUpload(inputEl, field) {
+	const file = inputEl.files[0]
+	if (!file) return
 
-	tbody.innerHTML = _theoryList
-		.map(item => {
-			const date = item.updated_at
-				? new Date(item.updated_at).toLocaleDateString()
-				: new Date(item.created_at).toLocaleDateString()
+	const fd = new FormData()
+	fd.append('file', file)
 
-			return `
-      <tr data-id="${item.id}">
-        <td><input class="edit-title"    value="${item.title}"></td>
-        <td><textarea class="edit-content">${item.content}</textarea></td>
-        <td>${_theoryCourseTitle}</td>
-        <td>${date}</td>
-        <td><!-- сразу редактировать, кнопки нет --></td>
-        <td>
-          <button class="save-topic">
-            <i class="fas fa-save"></i>
-          </button>
-        </td>
-        <td>
-          <button class="delete-topic">
-            <i class="fas fa-trash"></i>
-          </button>
-        </td>
-      </tr>
-    `
+	try {
+		const res = await fetch('/api/teacher/upload-theory-asset', {
+			method: 'POST',
+			credentials: 'include',
+			body: fd,
 		})
-		.join('')
+		if (!res.ok) throw new Error(`Status ${res.status}`)
+		const data = await res.json()
+		const html =
+			field === 'pdf'
+				? `<a href="${data.url}" …>${file.name}</a>`
+				: `<img src="${data.url}" …>`
+		insertHtmlAtCursor(html)
+		showToast('Файл загружен', 'success')
+	} catch (err) {
+		console.error(err)
+		showToast('Не удалось загрузить файл: ' + err.message, 'error')
+	}
+}
+
+// document
+// 	.getElementById('saveTheoryContent')
+// 	.addEventListener('click', async () => {
+// 		const content = quill.root.innerHTML
+// 		try {
+// 			const res = await fetch(`/api/teacher/theory/${currentTheoryId}`, {
+// 				method: 'PUT',
+// 				credentials: 'include',
+// 				headers: { 'Content-Type': 'application/json' },
+// 				body: JSON.stringify({ content }),
+// 			})
+// 			if (!res.ok) throw new Error(`Ошибка ${res.status}`)
+// 			showToast('Содержание сохранено', 'success')
+// 			document.getElementById('theoryModal').classList.add('hidden')
+// 		} catch (err) {
+// 			console.error(err)
+// 			showToast(err.message, 'error')
+// 		}
+// 	})
+
+/**
+ * Показывает уведомление (toast) в правом верхнем углу.
+ * @param {string} message - Сообщение для отображения.
+ * @param {'success' | 'error' | 'info'} type - Тип уведомления.
+ * @param {number} duration - Длительность показа в миллисекундах.
+ */
+function showToast(message, type = 'info', duration = 3000) {
+	const toastId = 'toast-' + Date.now()
+	const toastContainer =
+		document.getElementById('toast-container') || createToastContainer()
+
+	const toast = document.createElement('div')
+	toast.classList.add('toast', `toast-${type}`)
+	toast.id = toastId
+	toast.setAttribute('role', 'alert')
+	toast.setAttribute('aria-live', 'assertive')
+
+	const messageSpan = document.createElement('span')
+	messageSpan.textContent = message
+	toast.appendChild(messageSpan)
+
+	const closeButton = document.createElement('button')
+	closeButton.classList.add('toast-close-btn')
+	closeButton.innerHTML = '&times;'
+	closeButton.setAttribute('aria-label', 'Закрыть')
+	closeButton.onclick = () => {
+		toast.classList.remove('show')
+		setTimeout(() => toast.remove(), 300) // Дать время для анимации исчезновения
+	}
+	toast.appendChild(closeButton)
+
+	toastContainer.appendChild(toast)
+
+	// Показать toast
+	setTimeout(() => {
+		toast.classList.add('show')
+	}, 10) // Небольшая задержка для срабатывания CSS-transition
+
+	// Скрыть и удалить toast по истечении времени
+	setTimeout(() => {
+		toast.classList.remove('show')
+		setTimeout(() => toast.remove(), 300)
+	}, duration)
+}
+
+function createToastContainer() {
+	const container = document.createElement('div')
+	container.id = 'toast-container'
+	document.body.appendChild(container)
+	return container
 }
 
 // -----------------------
@@ -6953,308 +9430,119 @@ document.addEventListener('DOMContentLoaded', () => {
 	document
 		.getElementById('saveQuickQuestions')
 		?.addEventListener('click', saveQuickQuestions)
+
+	let quill = new Quill('#editorCanvas', {
+		modules: {
+			toolbar: '#editorToolbar',
+		},
+		theme: 'snow',
+	})
+
+	document
+		.getElementById('newTheoryForm')
+		.addEventListener('submit', async e => {
+			e.preventDefault()
+			const title = e.target.title.value.trim()
+			if (!title) {
+				showToast('Название темы не может быть пустым', 'error')
+				return
+			}
+			await fetch(`/api/teacher/courses/${_theoryCourseId}/theory`, {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ title }),
+			})
+			e.target.reset()
+			await reloadTheoryList(_theoryCourseId)
+		})
+
+	// Обработчик кнопки «PDF»
+	document.getElementById('ql-insert-pdf').addEventListener('click', () => {
+		const input = document.createElement('input')
+		input.setAttribute('type', 'file')
+		input.setAttribute('accept', 'application/pdf')
+		input.click()
+		input.onchange = async () => {
+			const file = input.files[0]
+			if (!file) return
+			const fd = new FormData()
+			fd.append('file', file)
+			showLoader()
+			try {
+				const res = await fetch('/api/teacher/upload-theory-asset', {
+					method: 'POST',
+					credentials: 'include',
+					body: fd,
+				})
+				if (!res.ok) throw new Error(`Ошибка ${res.status}`)
+				const { url } = await res.json()
+				// Вставляем ссылку‑иконку PDF
+				const range = quill.getSelection(true)
+				quill.insertEmbed(range.index, 'pdf', { url, name: file.name })
+				quill.setSelection(range.index + 1)
+				showToast('PDF вставлен', 'success')
+			} catch (err) {
+				console.error(err)
+				showToast('Ошибка загрузки PDF: ' + err.message, 'error')
+			} finally {
+				hideLoader()
+			}
+		}
+	})
+
+	// Регистрируем кастомный blot для PDF
+	const BlockEmbed = Quill.import('blots/block/embed')
+	class PdfBlot extends BlockEmbed {
+		static create(value) {
+			const node = super.create()
+			node.setAttribute('href', value.url)
+			node.setAttribute('target', '_blank')
+			node.innerHTML = `<i class="pdf-icon"></i>${value.name}`
+			return node
+		}
+		static value(node) {
+			return {
+				url: node.getAttribute('href'),
+				name: node.textContent,
+			}
+		}
+	}
+	PdfBlot.blotName = 'pdf'
+	PdfBlot.tagName = 'a'
+	Quill.register(PdfBlot)
+
+	const saveBtn = document.getElementById('saveTheoryContent')
+	if (saveBtn) {
+		saveBtn.addEventListener('click', async () => {
+			const content = quill.root.innerHTML
+			try {
+				const res = await fetch(`/api/teacher/theory/${currentTheoryId}`, {
+					method: 'PUT',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ content }),
+				})
+				if (!res.ok) throw new Error(`Ошибка ${res.status}`)
+				showToast('Содержание сохранено', 'success')
+				document.getElementById('theoryModal').classList.add('hidden')
+			} catch (err) {
+				console.error(err)
+				showToast(err.message, 'error')
+			}
+		})
+	}
+
+	// Закрытие модалки по кнопке Отмена
+	const closeBtn = document.getElementById('closeTheoryModal')
+	if (closeBtn) {
+		closeBtn.addEventListener('click', () => {
+			document.getElementById('theoryModal').classList.add('hidden')
+		})
+	}
 })
 
 Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\style.css
-/* === RESET & VARIABLES === */
-*,
-*::before,
-*::after {
-	box-sizing: border-box;
-	margin: 0;
-	padding: 0;
-}
-html {
-	font-size: 16px;
-	scroll-behavior: smooth;
-}
-:root {
-	--bg: #f9fafb;
-	--text: #1f2937;
-	--card-bg: #ffffff;
-	--border: #e5e7eb;
-	--primary: #4f46e5;
-	--text-muted: #6b7280;
-	--sp-xs: 0.5rem;
-	--sp-sm: 1rem;
-	--sp-md: 1.5rem;
-	--sp-lg: 2rem;
-	--radius: 0.5rem;
-	--trans: 0.3s ease;
-}
-:root[data-theme='dark'] {
-	--bg: #1f2937;
-	--text: #f9fafb;
-	--card-bg: #2d3748;
-	--border: #4a5568;
-	--primary: #a78bfa;
-	--text-muted: #a0aec0;
-}
-body {
-	font-family: 'Inter', sans-serif;
-	background: var(--bg);
-	color: var(--text);
-	min-height: 100vh;
-	transition: background 0.5s, color 0.5s;
-}
-
-/* NAVBAR */
-.navbar {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	background: var(--card-bg);
-	padding: var(--sp-xs) var(--sp-md);
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-	position: sticky;
-	top: 0;
-	z-index: 100;
-}
-.logo {
-	font-size: 1.25rem;
-	color: var(--primary);
-	font-weight: 700;
-	cursor: pointer;
-}
-.nav-links {
-	display: flex;
-	gap: var(--sp-md);
-}
-.nav-links a {
-	position: relative;
-	text-decoration: none;
-	color: var(--text-muted);
-	font-weight: 500;
-	padding: var(--sp-xs) 0;
-}
-.nav-links a.active,
-.nav-links a:hover {
-	color: var(--primary);
-}
-.nav-links a.active::after,
-.nav-links a:hover::after {
-	content: '';
-	position: absolute;
-	left: 0;
-	bottom: -2px;
-	width: 100%;
-	height: 2px;
-	background: var(--primary);
-}
-.actions {
-	display: flex;
-	align-items: center;
-}
-#theme-toggle {
-	background: none;
-	border: none;
-	cursor: pointer;
-	font-size: 1.25rem;
-	margin-right: var(--sp-sm);
-}
-.user-icon img {
-	width: 2rem;
-	height: 2rem;
-	border-radius: 50%;
-	object-fit: cover;
-	cursor: pointer;
-	transition: transform var(--trans);
-}
-.user-icon img:hover {
-	transform: scale(1.1);
-}
-
-/* PAGE CONTENT */
-.page-content {
-	max-width: 1200px;
-	margin: var(--sp-lg) auto;
-	padding: 0 var(--sp-md);
-}
-.page-content h1 {
-	margin-bottom: var(--sp-md);
-	color: var(--primary);
-	transition: color var(--trans);
-}
-
-/* TILES */
-.tiles {
-	display: flex;
-	gap: var(--sp-md);
-	flex-wrap: wrap;
-	margin-top: var(--sp-lg);
-}
-.card {
-	flex: 1 1 30%;
-	background: var(--primary);
-	color: var(--bg);
-	text-align: center;
-	padding: var(--sp-lg) var(--sp-md);
-	border-radius: var(--radius);
-	text-decoration: none;
-	font-size: 1.2rem;
-	transition: background var(--trans);
-}
-.card:hover {
-	background: #3c3bd1;
-}
-
-/* FORM GRID */
-.course-form {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) auto;
-	gap: var(--sp-sm);
-	margin-top: var(--sp-md);
-	align-items: end;
-}
-.course-form input,
-.course-form select {
-	padding: var(--sp-sm);
-	border: 1px solid var(--border);
-	border-radius: var(--radius);
-	background: var(--card-bg);
-	transition: border-color var(--trans);
-	color: var(--text);
-}
-.course-form input:focus,
-.course-form select:focus {
-	outline: none;
-	border-color: var(--primary);
-}
-.course-form label {
-	display: flex;
-	align-items: center;
-	gap: var(--sp-xs);
-}
-.course-form button {
-	display: flex;
-	align-items: center;
-	gap: var(--sp-xs);
-	padding: var(--sp-sm) var(--sp-md);
-	background: var(--primary);
-	color: var(--bg);
-	border: none;
-	border-radius: var(--radius);
-	cursor: pointer;
-	transition: opacity var(--trans);
-}
-.course-form button:hover {
-	opacity: 0.9;
-}
-
-/* TABLE WRAPPER */
-.table-wrapper {
-	margin-top: var(--sp-md);
-	overflow-x: auto;
-	background: var(--card-bg);
-	border: 1px solid var(--border);
-	border-radius: var(--radius);
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-.table-wrapper table {
-	width: 100%;
-	border-collapse: collapse;
-	table-layout: auto;
-}
-.table-wrapper th,
-.table-wrapper td {
-	padding: var(--sp-sm) var(--sp-md);
-	text-align: left;
-	white-space: nowrap;
-}
-.table-wrapper thead {
-	background: var(--primary);
-}
-.table-wrapper thead th {
-	color: var(--bg);
-	font-weight: 600;
-}
-.table-wrapper thead th:first-child {
-	border-top-left-radius: var(--radius);
-}
-.table-wrapper thead th:last-child {
-	border-top-right-radius: var(--radius);
-}
-.table-wrapper tbody tr:nth-child(odd) {
-	background: var(--bg);
-}
-.table-wrapper tbody tr:nth-child(even) {
-	background: var(--border);
-}
-.table-wrapper tbody tr:hover {
-	background: rgba(79, 70, 229, 0.1);
-}
-.table-wrapper tbody tr:last-child td:first-child {
-	border-bottom-left-radius: var(--radius);
-}
-.table-wrapper tbody tr:last-child td:last-child {
-	border-bottom-right-radius: var(--radius);
-}
-
-/* CRUD BUTTONS */
-button.save-course,
-button.save-open-answer,
-button.save-test,
-button.save-question,
-button.save-option,
-button.save-new-option,
-button.manage-options {
-	background: var(--primary);
-	color: var(--bg);
-	border: none;
-	padding: var(--sp-xs) var(--sp-sm);
-	border-radius: var(--radius);
-	cursor: pointer;
-	transition: opacity var(--trans);
-	margin-right: var(--sp-xs);
-}
-button.save-course:hover,
-button.save-test:hover,
-button.save-question:hover,
-button.save-option:hover,
-button.save-new-option:hover,
-button.manage-options:hover {
-	opacity: 0.8;
-}
-button.del-course,
-button.del-test,
-button.delete-open-answer,
-button.del-question,
-button.del-option {
-	background: transparent;
-	border: 1px solid var(--text-muted);
-	color: var(--text-muted);
-	padding: var(--sp-xs) var(--sp-sm);
-	border-radius: var(--radius);
-	cursor: pointer;
-	transition: background var(--trans), color var(--trans), opacity var(--trans);
-}
-button.del-course:hover,
-button.del-test:hover,
-button.del-question:hover,
-button.del-option:hover {
-	background: var(--text-muted);
-	color: var(--bg);
-	opacity: 0.8;
-}
-
-/* EDITABLE FIELDS */
-.edit-opt-text,
-input.edit-text {
-	width: 100%;
-	padding: var(--sp-xs) var(--sp-sm);
-	border: 1px solid var(--border);
-	border-radius: var(--radius);
-	background: var(--bg);
-	color: var(--text);
-	transition: border-color var(--trans), background var(--trans),
-		color var(--trans);
-}
-input.edit-text:focus {
-	outline: none;
-	border-color: var(--primary);
-	box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
-}
-
 /* SELECT & CHECKBOX */
 select.edit-type {
 	-webkit-appearance: none;
@@ -8092,287 +10380,6 @@ table.variant-table thead {
 	font-size: 14px;
 }
 
-Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\tests.html
-<!DOCTYPE html>
-<html lang="ru">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Панель учителя — Тесты</title>
-		<script src="/static/js/theme-init.js"></script>
-		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
-		<link
-			rel="stylesheet"
-			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-		/>
-		<script src="/static/teacherPanel/script.js" defer></script>
-	</head>
-	<body>
-		<header class="navbar">
-			<div class="logo" onclick="navigate('index.html')">Set Learn</div>
-			<nav class="nav-links">
-				<a href="/static/mainPage/index.html">Главная</a>
-				<a href="index.html">Панель учителя</a>
-				<a href="courses.html">Курсы</a>
-				<a href="tests.html" class="active">Тесты</a>
-				<a href="questions.html">Вопросы</a>
-			</nav>
-			<div class="actions">
-				<button id="theme-toggle" aria-label="Переключить тему"></button>
-				<div class="user-icon" onclick="navigate('/profile')">
-					<img src="/static/img/userDefault.png" alt="userDefault" />
-				</div>
-			</div>
-		</header>
-
-		<main class="page-content">
-			<h1>Управление тестами</h1>
-
-			<form id="newTestForm" class="course-form">
-				<select name="course_id" required>
-					<option value="">Выберите курс</option>
-				</select>
-				<input name="title" placeholder="Название теста" required />
-				<input name="description" placeholder="Описание теста" required />
-				<button type="submit"><i class="fas fa-plus"></i> Добавить</button>
-			</form>
-
-			<div class="table-wrapper">
-				<table id="testsTable">
-					<thead>
-						<tr>
-							<th>Название</th>
-							<th>Описание</th>
-							<th>Курс ID</th>
-							<th>Дата создания</th>
-							<th>Действия</th>
-						</tr>
-					</thead>
-					<tbody id="testsBody">
-						<!-- JS заполнит сюда строки вида:
-          <tr>
-            <td>Название теста</td>
-            <td>Описание теста</td>
-            <td>42</td>
-            <td>2025-05-10</td>
-            <td>
-              <button
-                class="btn"
-                data-action="open-quick-modal"
-                data-test-id="${test.id}"
-              >
-                Добавить вопросы
-              </button>
-            </td>
-          </tr>
-          --></tbody>
-				</table>
-			</div>
-		</main>
-
-		<!-- Быстрая модалка -->
-		<div id="questionModal" class="modal-overlay" style="display: none">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h3>Добавить вопросы</h3>
-					<button class="modal-close" id="closeQuestionModal">&times;</button>
-				</div>
-				<div class="modal-body">
-					<form id="quickQuestionForm" class="quick-form">
-						<input type="hidden" id="quickTestId" name="test_id" />
-						<div class="form-group">
-							<label for="question_text">Текст вопроса</label>
-							<textarea
-								id="question_text"
-								name="question_text"
-								required
-							></textarea>
-						</div>
-						<div class="form-group inline">
-							<label for="question_type">Тип вопроса</label>
-							<select id="question_type" name="question_type">
-								<option value="closed" selected>Закрытый</option>
-								<option value="open">Открытый</option>
-							</select>
-							<label id="multiLabel">
-								<input
-									type="checkbox"
-									id="multiple_choice"
-									name="multiple_choice"
-								/>
-								Несколько ответов
-							</label>
-							<input
-								type="text"
-								id="quick_correct_answer"
-								name="correct_answer_text"
-								placeholder="Правильный ответ (для открытого)"
-								style="display: none; margin-left: 1rem"
-							/>
-						</div>
-						<button type="submit" class="btn add-question">
-							<i class="fas fa-plus"></i> Добавить
-						</button>
-					</form>
-
-					<!-- Список вопросов -->
-					<ul id="quickQuestionsList" class="quick-questions-list">
-						<!-- Добавляется JS -->
-					</ul>
-				</div>
-
-				<div class="modal-footer">
-					<button class="btn save-questions" id="saveQuickQuestions" disabled>
-						<i class="fas fa-save"></i> Сохранить всё
-					</button>
-				</div>
-
-				<div id="unsavedConfirm" class="unsaved-confirm" style="display: none">
-					<p>Вы не сохранили изменения</p>
-					<button class="btn confirm-close" id="forceClose">
-						Всё равно закрыть
-					</button>
-					<button class="btn cancel-close" id="cancelClose">Отмена</button>
-				</div>
-			</div>
-		</div>
-	</body>
-</html>
-
-Файл: C:\dev\projects\html\Курсовая работа\static\teacherPanel\theory.html
-<!DOCTYPE html>
-<html lang="ru">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Панель учителя — Теория</title>
-		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
-		<link
-			rel="stylesheet"
-			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-		/>
-		<script src="/static/js/theme-init.js"></script>
-		<script src="/static/teacherPanel/script.js" defer></script>
-	</head>
-	<body>
-		<header class="navbar">
-			<div class="logo" onclick="navigate('index.html')">Set Learn</div>
-			<nav class="nav-links">
-				<a href="/static/mainPage/index.html">Главная</a>
-				<a href="index.html">Панель учителя</a>
-				<a href="courses.html">Курсы</a>
-				<a href="tests.html">Тесты</a>
-				<a href="questions.html">Вопросы</a>
-				<a href="theory.html" class="active">Теория</a>
-			</nav>
-			<div class="actions">
-				<button id="theme-toggle" aria-label="Переключить тему"></button>
-				<div class="user-icon" onclick="navigate('/profile')">
-					<img src="/static/img/userDefault.png" alt="userDefault" />
-				</div>
-			</div>
-		</header>
-
-		<main class="page-content">
-			<h1 id="page-title">Управление теорией</h1>
-
-			<!-- Форма быстрого создания новой темы -->
-			<form id="newTheoryForm" class="course-form">
-				<select id="theoryCourseSelect" name="course_id" required>
-					<option value="" disabled selected>Выберите курс</option>
-					<!-- JS вставит опции курсов -->
-				</select>
-				<input
-					type="text"
-					id="new-theory-title"
-					name="title"
-					placeholder="Название темы"
-					required
-				/>
-				<div
-					id="new-theory-content"
-					class="rte"
-					contenteditable="true"
-					placeholder="Текст теории"
-				></div>
-				<button type="submit" class="btn btn-primary">
-					<i class="fas fa-plus"></i> Создать
-				</button>
-			</form>
-
-			<!-- Таблица существующих тем -->
-			<div class="table-wrapper">
-				<table id="theory-table">
-					<thead>
-						<tr>
-							<th>Название</th>
-							<th>Содержимое</th>
-							<th>Курс</th>
-							<th>Дата создания</th>
-							<th>Редактировать</th>
-							<th>Сохранить</th>
-							<th>Удалить</th>
-						</tr>
-					</thead>
-					<tbody id="theoryBody">
-						<!-- JS вставит сюда строки -->
-					</tbody>
-				</table>
-			</div>
-		</main>
-
-		<!-- Большая модалка редактирования -->
-		<div id="theoryModal" class="modal hidden">
-			<div class="modal-backdrop"></div>
-			<div class="modal-content">
-				<span class="close" id="closeTheoryIcon">&times;</span>
-				<h2 id="modalTitle">Редактировать тему</h2>
-				<form id="theoryForm">
-					<div class="form-group">
-						<label for="edit-course">Курс</label>
-						<select id="edit-course" required>
-							<!-- сюда JS вставит опции -->
-						</select>
-					</div>
-					<div class="form-group">
-						<label for="edit-title">Заголовок</label>
-						<input id="edit-title" type="text" required />
-					</div>
-					<div class="form-group">
-						<label for="edit-content">Содержимое</label>
-						<div id="edit-content" class="rte" contenteditable="true"></div>
-					</div>
-					<div class="modal-actions">
-						<button type="submit" class="btn btn-primary">Сохранить</button>
-						<button
-							type="button"
-							class="btn btn-secondary"
-							id="cancelTheoryBtn"
-						>
-							Отмена
-						</button>
-					</div>
-				</form>
-			</div>
-		</div>
-		<!-- Мини-модалка «Есть несохранённые изменения?» -->
-		<div id="unsaved-modal" class="modal hidden">
-			<div class="modal-backdrop"></div>
-			<div class="modal-content">
-				<p>Вы не сохранили изменения. Закрыть без сохранения?</p>
-				<div class="modal-actions">
-					<button id="force-close-btn" class="btn btn-danger">
-						Всё равно закрыть
-					</button>
-					<button id="cancel-close-btn" class="btn btn-secondary">
-						Отмена
-					</button>
-				</div>
-			</div>
-		</div>
-	</body>
-</html>
-
 Файл: C:\dev\projects\html\Курсовая работа\static\theory\index.html
 <!DOCTYPE html>
 <html lang="ru">
@@ -8391,7 +10398,7 @@ table.variant-table thead {
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
 				<a href="/static/courses/">Курсы</a>
@@ -8401,7 +10408,10 @@ table.variant-table thead {
 					style="display: none"
 					>Панель админа</a
 				>
-				<a href="/static/teacherPanel/" id="nav-teacher" style="display: none"
+				<a
+					href="/static/teacherPanel/html/"
+					id="nav-teacher"
+					style="display: none"
 					>Панель учителя</a
 				>
 				<a href="#" class="active">Теория</a>
@@ -8568,8 +10578,9 @@ body {
 }
 .logo {
 	font-size: 1.25rem;
-	font-weight: 700;
 	color: var(--primary);
+	font-weight: 700;
+	cursor: pointer;
 }
 .nav-links {
 	display: flex;
@@ -8937,6 +10948,66 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	// всегда хранится в static/uploads/default.png
+	defaultAvatar = "/static/uploads/default.png"
+)
+
+func uploadTheoryAssetHandler(w http.ResponseWriter, r *http.Request) {
+	// 1) Ограничение метода
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// 2) Разбор multipart-фомы
+	err := r.ParseMultipartForm(10 << 20) // до 10 МБ
+	if err != nil {
+		http.Error(w, "Cannot parse form: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// 3) Получение файла
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Field 'file' missing: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// 4) Создание папки uploads, если нужно
+	uploadDir := "./static/fileUploads"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		http.Error(w, "Cannot create upload dir: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 5) Генерация уникального имени файла
+	timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
+	filename := timestamp + "_" + filepath.Base(header.Filename)
+	destPath := filepath.Join(uploadDir, filename)
+
+	// 6) Сохранение на диск
+	dst, err := os.Create(destPath)
+	if err != nil {
+		http.Error(w, "Cannot save file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, "Error writing file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 7) Формирование URL для клиента
+	// т.к. статика отдается по префиксу /static/, путь будет:
+	fileURL := "/static/fileUploads/" + filename
+
+	// 8) Отправка ответа
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"url": fileURL})
+}
+
 // uploadAvatarHandler — принимает multipart/form-data с полем "avatar"
 func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. Проверяем метод
@@ -9181,7 +11252,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Генерация токена
-	expiration := time.Now().Add(4 * time.Hour) // токен обновляется каждые 4 часов
+	expiration := time.Now().Add(48 * time.Hour) // токен обновляется каждые 48 часов
 	claims := &Claims{
 		Email:          user.Email,
 		Role:           user.Role,
@@ -9203,7 +11274,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   int(time.Until(expiration).Seconds()),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		// Secure:   true, // включите для HTTPS
+		Secure:   false,
 	})
 
 	w.Header().Set("Content-Type", "application/json")
@@ -9236,6 +11307,7 @@ func profileAPIHandler(w http.ResponseWriter, r *http.Request) {
 		LastLogin  time.Time `json:"last_login"`
 		AvatarPath string    `json:"avatar_path"`
 		Role       string    `json:"role"`
+		Group      *string   `json:"group"`
 	}
 	err = db.QueryRow(`
 		SELECT
@@ -9262,6 +11334,24 @@ func profileAPIHandler(w http.ResponseWriter, r *http.Request) {
 		&u.AvatarPath,
 		&u.Role,
 	)
+	if u.Role == "student" {
+		var name sql.NullString
+		err = db.QueryRow(`
+		  SELECT g.name
+		  FROM student_groups sg
+		  JOIN groups g ON g.id = sg.group_id
+		  WHERE sg.student_id = $1 AND sg.removed_at IS NULL
+		`, u.ID).Scan(&name)
+		if err != nil && err != sql.ErrNoRows {
+			http.Error(w, "Ошибка загрузки группы: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if name.Valid {
+			u.Group = &name.String
+		} else {
+			u.Group = nil // не назначен в группу
+		}
+	}
 	if err != nil {
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
@@ -9379,7 +11469,7 @@ func pingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("PING received from %s (user: %s)", r.RemoteAddr, claims.Email)
+	// log.Printf("PING received from %s (user: %s)", r.RemoteAddr, claims.Email)
 
 	// 5. Успешный ответ — пустой (204 No Content)
 	w.WriteHeader(http.StatusNoContent)
@@ -9641,12 +11731,6 @@ func adminStudentGroupsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// payload для PUT и DELETE запросов
-type studentGroupPayload struct {
-	StudentID int  `json:"student_id"`
-	GroupID   *int `json:"group_id"` // GroupID = nil означает «без группы»
-}
-
 // === Назначить или сменить группу ===
 // PUT /api/admin/student-groups
 // Тело: { "student_id": 123, "group_id": 456 }  или  { "student_id": 123, "group_id": null }
@@ -9746,29 +11830,41 @@ func handleRemoveStudentFromGroup(w http.ResponseWriter, r *http.Request) {
 //	GET  /api/teacher/groups/{id}    — детали группы и её студенты
 //	PUT  /api/teacher/groups/{id}    — обновить только поле name
 func teacherGroupsHandler(w http.ResponseWriter, r *http.Request) {
-	// Из контекста берем текущий userID (преподаватель)
-	uidVal := r.Context().Value("userID")
-	if uidVal == nil {
-		http.Error(w, "Не авторизован", http.StatusUnauthorized)
-		return
-	}
-	teacherID, ok := uidVal.(int)
-	if !ok {
-		http.Error(w, "Неверный формат userID", http.StatusInternalServerError)
+	// Достаём JWT claims из куки
+	tokenCookie, err := r.Cookie("token")
+	if err != nil {
+		http.Error(w, "Unauthorized: no token", http.StatusUnauthorized)
 		return
 	}
 
-	// Разбираем путь: base = "/api/teacher/groups"
+	claims := &Claims{}
+	if _, err := jwt.ParseWithClaims(tokenCookie.Value, claims, func(t *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	}); err != nil {
+		http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	// Получаем ID преподавателя по email из claims
+	var teacherID int
+	err = db.QueryRow(`SELECT id FROM users WHERE email = $1 AND role = 'teacher'`, claims.Email).Scan(&teacherID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Преподаватель не найден", http.StatusForbidden)
+		return
+	} else if err != nil {
+		http.Error(w, "Ошибка при получении ID преподавателя: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Разбор пути
 	base := "/api/teacher/groups"
-	path := strings.TrimPrefix(r.URL.Path, base)
-	path = strings.Trim(path, "/") // либо "" для списка, либо "123" для конкретной
+	path := strings.Trim(strings.TrimPrefix(r.URL.Path, base), "/")
 
 	switch r.Method {
 	case http.MethodGet:
 		if path == "" {
 			getTeacherGroups(w, teacherID)
 		} else {
-			// получить детали конкретной группы
 			id, err := strconv.Atoi(path)
 			if err != nil {
 				http.Error(w, "Неверный ID группы", http.StatusBadRequest)
@@ -9778,7 +11874,7 @@ func teacherGroupsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodPut:
 		if path == "" {
-			http.Error(w, "ID группы обязателен в URL", http.StatusBadRequest)
+			http.Error(w, "ID группы обязателен", http.StatusBadRequest)
 			return
 		}
 		id, err := strconv.Atoi(path)
@@ -9795,11 +11891,11 @@ func teacherGroupsHandler(w http.ResponseWriter, r *http.Request) {
 // GET /api/teacher/groups
 func getTeacherGroups(w http.ResponseWriter, teacherID int) {
 	rows, err := db.Query(`
-		SELECT id, name, teacher_id, created_at, updated_at
-		FROM groups
-		WHERE teacher_id = $1
-		ORDER BY name
-	`, teacherID)
+        SELECT id, name, teacher_id, created_at, updated_at
+        FROM groups
+        WHERE teacher_id = $1
+        ORDER BY name
+    `, teacherID)
 	if err != nil {
 		http.Error(w, "Не удалось загрузить группы: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -9810,7 +11906,7 @@ func getTeacherGroups(w http.ResponseWriter, teacherID int) {
 	for rows.Next() {
 		var g Group
 		if err := rows.Scan(&g.ID, &g.Name, &g.TeacherID, &g.CreatedAt, &g.UpdatedAt); err != nil {
-			http.Error(w, "Ошибка чтения групп: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Ошибка чтения группы: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		list = append(list, g)
@@ -9822,13 +11918,13 @@ func getTeacherGroups(w http.ResponseWriter, teacherID int) {
 
 // GET /api/teacher/groups/{id}
 func getTeacherGroupDetail(w http.ResponseWriter, teacherID, groupID int) {
-	// Проверим, что группа принадлежит этому преподавателю
+	// Проверяем право
 	var g Group
 	err := db.QueryRow(`
-		SELECT id, name, teacher_id, created_at, updated_at
-		FROM groups
-		WHERE id = $1 AND teacher_id = $2
-	`, groupID, teacherID).Scan(&g.ID, &g.Name, &g.TeacherID, &g.CreatedAt, &g.UpdatedAt)
+        SELECT id, name, teacher_id, created_at, updated_at
+        FROM groups
+        WHERE id = $1 AND teacher_id = $2
+    `, groupID, teacherID).Scan(&g.ID, &g.Name, &g.TeacherID, &g.CreatedAt, &g.UpdatedAt)
 	if err == sql.ErrNoRows {
 		http.Error(w, "Группа не найдена или нет доступа", http.StatusNotFound)
 		return
@@ -9837,13 +11933,13 @@ func getTeacherGroupDetail(w http.ResponseWriter, teacherID, groupID int) {
 		return
 	}
 
-	// Соберём студентов
+	// Собираем студентов
 	rows, err := db.Query(`
-		SELECT u.id, u.full_name, u.email
-		FROM users u
-		JOIN student_groups sg ON sg.student_id = u.id
-		WHERE sg.group_id = $1 AND sg.removed_at IS NULL
-	`, groupID)
+        SELECT u.id, u.full_name, u.email
+        FROM users u
+        JOIN student_groups sg ON sg.student_id = u.id
+        WHERE sg.group_id = $1 AND sg.removed_at IS NULL
+    `, groupID)
 	if err != nil {
 		http.Error(w, "Не удалось загрузить студентов: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -9860,14 +11956,13 @@ func getTeacherGroupDetail(w http.ResponseWriter, teacherID, groupID int) {
 		students = append(students, s)
 	}
 
-	// Формируем полный ответ
 	detail := GroupDetail{
 		ID:        g.ID,
 		Name:      g.Name,
 		TeacherID: g.TeacherID,
+		Students:  students,
 		CreatedAt: g.CreatedAt,
 		UpdatedAt: g.UpdatedAt,
-		Students:  students,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -9876,7 +11971,6 @@ func getTeacherGroupDetail(w http.ResponseWriter, teacherID, groupID int) {
 
 // PUT /api/teacher/groups/{id}
 func updateTeacherGroup(w http.ResponseWriter, r *http.Request, teacherID, groupID int) {
-	// Читаем новый payload
 	var payload struct {
 		Name string `json:"name"`
 	}
@@ -9885,26 +11979,23 @@ func updateTeacherGroup(w http.ResponseWriter, r *http.Request, teacherID, group
 		return
 	}
 	if payload.Name == "" {
-		http.Error(w, "Название группы обязательно", http.StatusBadRequest)
+		http.Error(w, "Название обязательно", http.StatusBadRequest)
 		return
 	}
 
-	// Обновляем только если группа принадлежит преподавателю
 	res, err := db.Exec(`
-		UPDATE groups
-		SET name = $1, updated_at = NOW()
-		WHERE id = $2 AND teacher_id = $3
-	`, payload.Name, groupID, teacherID)
+        UPDATE groups
+        SET name = $1, updated_at = NOW()
+        WHERE id = $2 AND teacher_id = $3
+    `, payload.Name, groupID, teacherID)
 	if err != nil {
-		http.Error(w, "Ошибка обновления группы: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Ошибка обновления: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	affected, _ := res.RowsAffected()
-	if affected == 0 {
-		http.Error(w, "Группа не найдена или нет прав на редактирование", http.StatusNotFound)
+	if n, _ := res.RowsAffected(); n == 0 {
+		http.Error(w, "Нет доступа или группа не найдена", http.StatusNotFound)
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -9914,46 +12005,64 @@ func updateTeacherGroup(w http.ResponseWriter, r *http.Request, teacherID, group
 //	PUT    /api/teacher/student-groups   — назначить или сменить группу (student_id + group_id)
 //	DELETE /api/teacher/student-groups   — удалить студента из группы (student_id + group_id)
 func teacherStudentGroupsHandler(w http.ResponseWriter, r *http.Request) {
-	// получаем ID преподавателя из контекста
-	uidVal := r.Context().Value("userID")
-	teacherID, ok := uidVal.(int)
-	if !ok {
+	// 1) Достаем Claims
+	claims := getClaims(r.Context())
+	if claims == nil {
 		http.Error(w, "Не авторизован", http.StatusUnauthorized)
 		return
 	}
 
-	// декодируем payload
+	// 2) Берем teacherID: из claims.UserID, или по Email, если UserID==0
+	teacherID := claims.UserID
+	if teacherID == 0 {
+		// дополнительный запрос к БД
+		err := db.QueryRow(
+			`SELECT id FROM users WHERE email = $1 AND role = 'teacher'`,
+			claims.Email,
+		).Scan(&teacherID)
+		if err != nil {
+			http.Error(w, "Не удалось определить ID преподавателя", http.StatusInternalServerError)
+			return
+		}
+	}
+	// log.Printf("teacherStudentGroupsHandler: teacherID(claims)=%d", teacherID)
+
+	// 2) Декодируем payload
 	var p studentGroupPayload
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
 		http.Error(w, "Некорректный JSON: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if p.StudentID == 0 {
-		http.Error(w, "student_id обязателен", http.StatusBadRequest)
+	if p.GroupID == nil {
+		http.Error(w, "group_id обязателен", http.StatusBadRequest)
+		return
+	}
+	if p.StudentID == 0 && p.StudentEmail == "" {
+		http.Error(w, "Надо указать student_id или student_email", http.StatusBadRequest)
 		return
 	}
 
-	// проверка прав на группу
-	if p.GroupID != nil {
-		var ownerID int
-		err := db.QueryRow(
-			`SELECT teacher_id FROM groups WHERE id = $1`,
-			*p.GroupID,
-		).Scan(&ownerID)
-		if err == sql.ErrNoRows {
-			http.Error(w, "Группа не найдена", http.StatusNotFound)
-			return
-		} else if err != nil {
-			http.Error(w, "Ошибка проверки группы: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if ownerID != teacherID {
-			http.Error(w, "Нет прав на управление этой группой", http.StatusForbidden)
-			return
-		}
+	// 3) Проверка прав на группу
+	var owner int
+	err := db.QueryRow(
+		`SELECT teacher_id FROM groups WHERE id = $1`,
+		*p.GroupID,
+	).Scan(&owner)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Группа не найдена", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Ошибка проверки группы: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// log.Printf("teacherStudentGroupsHandler: teacherID(claims)=%d, group.owner=%d\n", teacherID, owner)
+
+	if owner != teacherID {
+		http.Error(w, "Нет прав", http.StatusForbidden)
+		return
 	}
 
-	// выбираем действие по методу
+	// 4) Выполняем действие
 	switch r.Method {
 	case http.MethodPut:
 		handleTeacherAssign(w, r.Context(), p)
@@ -9966,57 +12075,68 @@ func teacherStudentGroupsHandler(w http.ResponseWriter, r *http.Request) {
 
 // Назначение или смена группы (PUT)
 func handleTeacherAssign(w http.ResponseWriter, ctx context.Context, p studentGroupPayload) {
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		http.Error(w, "Не удалось начать транзакцию: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Ошибка транзакции: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback()
 
-	// 1) Закрываем все активные назначения этого студента
+	// lookup by email если нужно
+	if p.StudentID == 0 && p.StudentEmail != "" {
+		if err := tx.QueryRowContext(ctx, `
+            SELECT id FROM users WHERE email = $1 AND role = 'student'
+        `, p.StudentEmail).Scan(&p.StudentID); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Студент не найден", http.StatusBadRequest)
+			} else {
+				http.Error(w, "Ошибка поиска студента: "+err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+	}
+
+	// закрываем старые
 	if _, err := tx.ExecContext(ctx, `
-		UPDATE student_groups
-		SET removed_at = NOW()
-		WHERE student_id = $1 AND removed_at IS NULL
-	`, p.StudentID); err != nil {
-		http.Error(w, "Ошибка закрытия старых назначений: "+err.Error(), http.StatusInternalServerError)
+        UPDATE student_groups
+        SET removed_at = NOW()
+        WHERE student_id = $1 AND removed_at IS NULL
+    `, p.StudentID); err != nil {
+		http.Error(w, "Ошибка закрытия старых: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// 2) Вставляем новое назначение в указанную группу
+	// вставляем новое
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO student_groups (student_id, group_id, assigned_at)
-		VALUES ($1, $2, NOW())
-	`, p.StudentID, p.GroupID); err != nil {
-		http.Error(w, "Ошибка назначения студента: "+err.Error(), http.StatusInternalServerError)
+        INSERT INTO student_groups(student_id, group_id, assigned_at)
+        VALUES($1, $2, NOW())
+    `, p.StudentID, *p.GroupID); err != nil {
+		http.Error(w, "Ошибка назначения: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if err := tx.Commit(); err != nil {
-		http.Error(w, "Не удалось сохранить транзакцию: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Ошибка коммита: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // Удаление студента из группы (DELETE)
 func handleTeacherRemove(w http.ResponseWriter, p studentGroupPayload) {
 	res, err := db.Exec(`
-		UPDATE student_groups
-		SET removed_at = NOW()
-		WHERE student_id = $1 AND group_id = $2 AND removed_at IS NULL
-	`, p.StudentID, p.GroupID)
+        UPDATE student_groups
+        SET removed_at = NOW()
+        WHERE student_id = $1 AND group_id = $2 AND removed_at IS NULL
+    `, p.StudentID, *p.GroupID)
 	if err != nil {
-		http.Error(w, "Ошибка удаления студента из группы: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Ошибка удаления: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	affected, _ := res.RowsAffected()
-	if affected == 0 {
+	if n, _ := res.RowsAffected(); n == 0 {
 		http.Error(w, "Активная запись не найдена", http.StatusBadRequest)
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -11307,33 +13427,46 @@ func CreateTheoryHandler(w http.ResponseWriter, r *http.Request) {
 
 // PUT /api/teacher/theory/{id}
 func UpdateTheoryHandler(w http.ResponseWriter, r *http.Request, id int) {
-	// Декодируем тело запроса
-	var req struct {
-		Title     string `json:"title"`
-		Content   string `json:"content"`
-		SortOrder int    `json:"sort_order"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+	var req map[string]interface{}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Обновляем в БД
-	res, err := db.Exec(`
-        UPDATE theory
-           SET title     = $1,
-               content   = $2,
-               sort_order= $3,
-               updated_at= NOW()
-         WHERE id = $4
-    `, req.Title, req.Content, req.SortOrder, id)
-	if err != nil {
-		log.Println("UpdateTheory query error:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	fields := []string{}
+	args := []interface{}{}
+	i := 1
+
+	if title, ok := req["title"].(string); ok {
+		fields = append(fields, fmt.Sprintf("title = $%d", i))
+		args = append(args, title)
+		i++
+	}
+
+	if content, ok := req["content"].(string); ok {
+		fields = append(fields, fmt.Sprintf("content = $%d", i))
+		args = append(args, content)
+		i++
+	}
+
+	if sortOrder, ok := req["sort_order"].(float64); ok { // JSON numbers -> float64
+		fields = append(fields, fmt.Sprintf("sort_order = $%d", i))
+		args = append(args, int(sortOrder))
+		i++
+	}
+
+	if len(fields) == 0 {
+		http.Error(w, "No fields to update", http.StatusBadRequest)
 		return
 	}
-	if cnt, _ := res.RowsAffected(); cnt == 0 {
-		http.Error(w, "Not Found", http.StatusNotFound)
+
+	args = append(args, id)
+	query := fmt.Sprintf("UPDATE theory SET %s WHERE id = $%d", strings.Join(fields, ", "), i)
+
+	_, err = db.Exec(query, args...)
+	if err != nil {
+		http.Error(w, "DB update error", http.StatusInternalServerError)
 		return
 	}
 
@@ -11426,11 +13559,6 @@ const (
 	dbname   = "KursachDB"
 )
 
-const (
-	// всегда хранится в static/uploads/default.png
-	defaultAvatar = "/static/uploads/default.png"
-)
-
 var (
 	db              *sql.DB
 	jwtKey          = []byte("my_secret_key")
@@ -11504,9 +13632,14 @@ func main() {
 
 	// === teacher для своих групп ===
 	apiMux.Handle(
+		"/api/teacher/groups/",
+		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherGroupsHandler)),
+	)
+	apiMux.Handle(
 		"/api/teacher/groups",
 		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherGroupsHandler)),
 	)
+
 	apiMux.Handle(
 		"/api/teacher/student-groups",
 		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherStudentGroupsHandler)),
@@ -11516,6 +13649,10 @@ func main() {
 	apiMux.Handle(
 		"/api/teacher/courses",
 		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(teacherCoursesHandler)),
+	)
+	apiMux.Handle(
+		"/api/teacher/upload-theory-asset",
+		RequireAnyRole([]string{"admin", "teacher"}, http.HandlerFunc(uploadTheoryAssetHandler)),
 	)
 	apiMux.Handle(
 		"/api/teacher/tests",
@@ -11626,7 +13763,7 @@ func main() {
 		}),
 	))
 
-	// Вешаем JWT-мидлварь на все /api/
+	// Вешаем JWT-мидлвэир на все /api/
 	mux.Handle("/api/", JWTAuthMiddleware(apiMux))
 
 	// Запуск сервера с CORS
@@ -11641,7 +13778,7 @@ func createAdminUser() {
 		Email:        "admin@example.com",
 		PasswordHash: string(hashed),
 		Role:         "admin",
-		FullName:     "Admin",
+		FullName:     "Admin1",
 		IsActive:     true,
 		CreatedAt:    time.Now(),
 	}
@@ -11664,6 +13801,114 @@ func createAdminUser() {
 }
 
 Файл: C:\dev\projects\html\Курсовая работа\middleware.go
+// package main
+
+// import (
+// 	"context"
+// 	"net/http"
+
+// 	"github.com/golang-jwt/jwt"
+// )
+
+// // ключ для контекста
+// type ctxKey string
+
+// const (
+// 	ctxKeyClaims ctxKey = "claims"
+// )
+
+// // Claims — ваша структура из main.go
+// // убедитесь, что она совпадает по имени и полям
+// // type Claims struct {
+// //     Email string `json:"email"`
+// //     Role  string `json:"role"`
+// //     jwt.StandardClaims
+// // }
+
+// // getClaims извлекает *Claims из context, записанных JWTAuthMiddleware
+// func getClaims(ctx context.Context) *Claims {
+// 	if c, ok := ctx.Value(ctxKeyClaims).(*Claims); ok {
+// 		return c
+// 	}
+// 	return nil
+// }
+
+// // JWTAuthMiddleware проверяет JWT и кладёт Claims в контекст
+// func JWTAuthMiddleware(next http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		cookie, err := r.Cookie("token")
+// 		if err != nil {
+// 			http.Error(w, "Unauthorized: no token", http.StatusUnauthorized)
+// 			return
+// 		}
+
+// 		claims := &Claims{}
+// 		token, err := jwt.ParseWithClaims(cookie.Value, claims, func(t *jwt.Token) (interface{}, error) {
+// 			return jwtKey, nil
+// 		})
+// 		if err != nil || !token.Valid {
+// 			http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
+// 			return
+// 		}
+
+// 		ctx := context.WithValue(r.Context(), ctxKeyClaims, claims)
+// 		next.ServeHTTP(w, r.WithContext(ctx))
+// 	})
+// }
+
+// // RequireRole — позволяет только одной роли
+// func RequireRole(roleAllowed string, next http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		c := r.Context().Value(ctxKeyClaims)
+// 		claims, ok := c.(*Claims)
+// 		if !ok || claims.Role != roleAllowed {
+// 			http.Error(w, "Forbidden: insufficient role", http.StatusForbidden)
+// 			return
+// 		}
+// 		next.ServeHTTP(w, r)
+// 	})
+// }
+
+// // RequireAnyRole — позволяет любым из списка ролей
+// func RequireAnyRole(allowed []string, next http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		c := r.Context().Value(ctxKeyClaims)
+// 		claims, ok := c.(*Claims)
+// 		if !ok {
+// 			http.Error(w, "Forbidden: no claims", http.StatusForbidden)
+// 			return
+// 		}
+// 		for _, role := range allowed {
+// 			if claims.Role == role {
+// 				next.ServeHTTP(w, r)
+// 				return
+// 			}
+// 		}
+// 		http.Error(w, "Forbidden: insufficient role", http.StatusForbidden)
+// 	})
+// }
+
+// // CORSMiddleware разрешает запросы с 3000 и 8080 и обрабатывает preflight
+// func CORSMiddleware(next http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		origin := r.Header.Get("Origin")
+// 		if origin == "http://localhost:3000" || origin == "http://localhost:8080" {
+// 			w.Header().Set("Access-Control-Allow-Origin", origin)
+// 			w.Header().Set("Access-Control-Allow-Credentials", "true")
+// 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept")
+// 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+// 		}
+
+// 		// На preflight-запрос (OPTIONS) сразу отвечаем 200
+// 		if r.Method == http.MethodOptions {
+// 			w.WriteHeader(http.StatusOK)
+// 			return
+// 		}
+
+// 		next.ServeHTTP(w, r)
+// 	})
+// }
+
 package main
 
 import (
@@ -11680,15 +13925,7 @@ const (
 	ctxKeyClaims ctxKey = "claims"
 )
 
-// Claims — ваша структура из main.go
-// убедитесь, что она совпадает по имени и полям
-// type Claims struct {
-//     Email string `json:"email"`
-//     Role  string `json:"role"`
-//     jwt.StandardClaims
-// }
-
-// getClaims извлекает *Claims из context, записанных JWTAuthMiddleware
+// Извлечение Claims из контекста
 func getClaims(ctx context.Context) *Claims {
 	if c, ok := ctx.Value(ctxKeyClaims).(*Claims); ok {
 		return c
@@ -11699,12 +13936,14 @@ func getClaims(ctx context.Context) *Claims {
 // JWTAuthMiddleware проверяет JWT и кладёт Claims в контекст
 func JWTAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Проверяем наличие токена
 		cookie, err := r.Cookie("token")
 		if err != nil {
 			http.Error(w, "Unauthorized: no token", http.StatusUnauthorized)
 			return
 		}
 
+		// Парсим токен
 		claims := &Claims{}
 		token, err := jwt.ParseWithClaims(cookie.Value, claims, func(t *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
@@ -11714,6 +13953,7 @@ func JWTAuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// Сохраняем claims в контексте
 		ctx := context.WithValue(r.Context(), ctxKeyClaims, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -11722,10 +13962,9 @@ func JWTAuthMiddleware(next http.Handler) http.Handler {
 // RequireRole — позволяет только одной роли
 func RequireRole(roleAllowed string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c := r.Context().Value(ctxKeyClaims)
-		claims, ok := c.(*Claims)
-		if !ok || claims.Role != roleAllowed {
-			http.Error(w, "Forbidden: insufficient role", http.StatusForbidden)
+		claims := getClaims(r.Context())
+		if claims == nil || claims.Role != roleAllowed {
+			http.Error(w, "Unauthorized: insufficient role", http.StatusUnauthorized)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -11735,10 +13974,9 @@ func RequireRole(roleAllowed string, next http.Handler) http.Handler {
 // RequireAnyRole — позволяет любым из списка ролей
 func RequireAnyRole(allowed []string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c := r.Context().Value(ctxKeyClaims)
-		claims, ok := c.(*Claims)
-		if !ok {
-			http.Error(w, "Forbidden: no claims", http.StatusForbidden)
+		claims := getClaims(r.Context())
+		if claims == nil {
+			http.Error(w, "Unauthorized: no claims", http.StatusUnauthorized)
 			return
 		}
 		for _, role := range allowed {
@@ -11747,7 +13985,7 @@ func RequireAnyRole(allowed []string, next http.Handler) http.Handler {
 				return
 			}
 		}
-		http.Error(w, "Forbidden: insufficient role", http.StatusForbidden)
+		http.Error(w, "Unauthorized: insufficient role", http.StatusUnauthorized)
 	})
 }
 
@@ -11758,7 +13996,7 @@ func CORSMiddleware(next http.Handler) http.Handler {
 		if origin == "http://localhost:3000" || origin == "http://localhost:8080" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, X-Requested-With")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		}
 
@@ -11835,8 +14073,9 @@ type User struct {
 
 // Claims для JWT
 type Claims struct {
-	Email string `json:"email"`
-	Role  string `json:"role"`
+	UserID int    `json:"user_id"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
 	jwt.StandardClaims
 }
 
@@ -11959,4 +14198,14 @@ type StudentBrief struct {
 	FullName string `json:"full_name"`
 	Email    string `json:"email"`
 }
+
+// studentGroupPayload — входной JSON для PUT/DELETE /api/teacher/student-groups
+type studentGroupPayload struct {
+	StudentID    int    `json:"student_id"`
+	StudentEmail string `json:"student_email"`
+	GroupID      *int   `json:"group_id"`
+}
+
+Файл: C:\dev\projects\html\Курсовая работа\teacher.go
+package main
 

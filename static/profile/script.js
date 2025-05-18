@@ -79,6 +79,18 @@ async function loadProfile() {
 		setText('email', user.email)
 		setText('role', user.role)
 
+		// Логика для отображения группы
+		const groupEl = document.getElementById('group')
+		if (groupEl) {
+			// если студент и есть непустое поле user.group — показываем его
+			if (user.role === 'student' && user.group) {
+				groupEl.textContent = user.group
+			} else {
+				// во всех остальных случаях — прочерк
+				groupEl.textContent = '—'
+			}
+		}
+
 		// Онлайн / последний визит
 		const isActiveEl = document.getElementById('isActive')
 		if (isActiveEl) {

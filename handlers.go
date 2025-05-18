@@ -23,6 +23,61 @@ const (
 	defaultAvatar = "/static/uploads/default.png"
 )
 
+func uploadTheoryAssetHandler(w http.ResponseWriter, r *http.Request) {
+	// 1) Ограничение метода
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// 2) Разбор multipart-фомы
+	err := r.ParseMultipartForm(10 << 20) // до 10 МБ
+	if err != nil {
+		http.Error(w, "Cannot parse form: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// 3) Получение файла
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Field 'file' missing: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// 4) Создание папки uploads, если нужно
+	uploadDir := "./static/fileUploads"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		http.Error(w, "Cannot create upload dir: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 5) Генерация уникального имени файла
+	timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
+	filename := timestamp + "_" + filepath.Base(header.Filename)
+	destPath := filepath.Join(uploadDir, filename)
+
+	// 6) Сохранение на диск
+	dst, err := os.Create(destPath)
+	if err != nil {
+		http.Error(w, "Cannot save file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, "Error writing file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 7) Формирование URL для клиента
+	// т.к. статика отдается по префиксу /static/, путь будет:
+	fileURL := "/static/fileUploads/" + filename
+
+	// 8) Отправка ответа
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"url": fileURL})
+}
+
 // uploadAvatarHandler — принимает multipart/form-data с полем "avatar"
 func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. Проверяем метод
@@ -267,7 +322,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Генерация токена
-	expiration := time.Now().Add(4 * time.Hour) // токен обновляется каждые 4 часов
+	expiration := time.Now().Add(48 * time.Hour) // токен обновляется каждые 48 часов
 	claims := &Claims{
 		Email:          user.Email,
 		Role:           user.Role,
@@ -289,7 +344,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   int(time.Until(expiration).Seconds()),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		// Secure:   true, // включите для HTTPS
+		Secure:   false,
 	})
 
 	w.Header().Set("Content-Type", "application/json")
@@ -322,6 +377,7 @@ func profileAPIHandler(w http.ResponseWriter, r *http.Request) {
 		LastLogin  time.Time `json:"last_login"`
 		AvatarPath string    `json:"avatar_path"`
 		Role       string    `json:"role"`
+		Group      *string   `json:"group"`
 	}
 	err = db.QueryRow(`
 		SELECT
@@ -348,6 +404,24 @@ func profileAPIHandler(w http.ResponseWriter, r *http.Request) {
 		&u.AvatarPath,
 		&u.Role,
 	)
+	if u.Role == "student" {
+		var name sql.NullString
+		err = db.QueryRow(`
+		  SELECT g.name
+		  FROM student_groups sg
+		  JOIN groups g ON g.id = sg.group_id
+		  WHERE sg.student_id = $1 AND sg.removed_at IS NULL
+		`, u.ID).Scan(&name)
+		if err != nil && err != sql.ErrNoRows {
+			http.Error(w, "Ошибка загрузки группы: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if name.Valid {
+			u.Group = &name.String
+		} else {
+			u.Group = nil // не назначен в группу
+		}
+	}
 	if err != nil {
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
@@ -465,7 +539,7 @@ func pingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("PING received from %s (user: %s)", r.RemoteAddr, claims.Email)
+	// log.Printf("PING received from %s (user: %s)", r.RemoteAddr, claims.Email)
 
 	// 5. Успешный ответ — пустой (204 No Content)
 	w.WriteHeader(http.StatusNoContent)
@@ -727,12 +801,6 @@ func adminStudentGroupsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// payload для PUT и DELETE запросов
-type studentGroupPayload struct {
-	StudentID int  `json:"student_id"`
-	GroupID   *int `json:"group_id"` // GroupID = nil означает «без группы»
-}
-
 // === Назначить или сменить группу ===
 // PUT /api/admin/student-groups
 // Тело: { "student_id": 123, "group_id": 456 }  или  { "student_id": 123, "group_id": null }
@@ -832,29 +900,41 @@ func handleRemoveStudentFromGroup(w http.ResponseWriter, r *http.Request) {
 //	GET  /api/teacher/groups/{id}    — детали группы и её студенты
 //	PUT  /api/teacher/groups/{id}    — обновить только поле name
 func teacherGroupsHandler(w http.ResponseWriter, r *http.Request) {
-	// Из контекста берем текущий userID (преподаватель)
-	uidVal := r.Context().Value("userID")
-	if uidVal == nil {
-		http.Error(w, "Не авторизован", http.StatusUnauthorized)
-		return
-	}
-	teacherID, ok := uidVal.(int)
-	if !ok {
-		http.Error(w, "Неверный формат userID", http.StatusInternalServerError)
+	// Достаём JWT claims из куки
+	tokenCookie, err := r.Cookie("token")
+	if err != nil {
+		http.Error(w, "Unauthorized: no token", http.StatusUnauthorized)
 		return
 	}
 
-	// Разбираем путь: base = "/api/teacher/groups"
+	claims := &Claims{}
+	if _, err := jwt.ParseWithClaims(tokenCookie.Value, claims, func(t *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	}); err != nil {
+		http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	// Получаем ID преподавателя по email из claims
+	var teacherID int
+	err = db.QueryRow(`SELECT id FROM users WHERE email = $1 AND role = 'teacher'`, claims.Email).Scan(&teacherID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Преподаватель не найден", http.StatusForbidden)
+		return
+	} else if err != nil {
+		http.Error(w, "Ошибка при получении ID преподавателя: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Разбор пути
 	base := "/api/teacher/groups"
-	path := strings.TrimPrefix(r.URL.Path, base)
-	path = strings.Trim(path, "/") // либо "" для списка, либо "123" для конкретной
+	path := strings.Trim(strings.TrimPrefix(r.URL.Path, base), "/")
 
 	switch r.Method {
 	case http.MethodGet:
 		if path == "" {
 			getTeacherGroups(w, teacherID)
 		} else {
-			// получить детали конкретной группы
 			id, err := strconv.Atoi(path)
 			if err != nil {
 				http.Error(w, "Неверный ID группы", http.StatusBadRequest)
@@ -864,7 +944,7 @@ func teacherGroupsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodPut:
 		if path == "" {
-			http.Error(w, "ID группы обязателен в URL", http.StatusBadRequest)
+			http.Error(w, "ID группы обязателен", http.StatusBadRequest)
 			return
 		}
 		id, err := strconv.Atoi(path)
@@ -881,11 +961,11 @@ func teacherGroupsHandler(w http.ResponseWriter, r *http.Request) {
 // GET /api/teacher/groups
 func getTeacherGroups(w http.ResponseWriter, teacherID int) {
 	rows, err := db.Query(`
-		SELECT id, name, teacher_id, created_at, updated_at
-		FROM groups
-		WHERE teacher_id = $1
-		ORDER BY name
-	`, teacherID)
+        SELECT id, name, teacher_id, created_at, updated_at
+        FROM groups
+        WHERE teacher_id = $1
+        ORDER BY name
+    `, teacherID)
 	if err != nil {
 		http.Error(w, "Не удалось загрузить группы: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -896,7 +976,7 @@ func getTeacherGroups(w http.ResponseWriter, teacherID int) {
 	for rows.Next() {
 		var g Group
 		if err := rows.Scan(&g.ID, &g.Name, &g.TeacherID, &g.CreatedAt, &g.UpdatedAt); err != nil {
-			http.Error(w, "Ошибка чтения групп: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Ошибка чтения группы: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		list = append(list, g)
@@ -908,13 +988,13 @@ func getTeacherGroups(w http.ResponseWriter, teacherID int) {
 
 // GET /api/teacher/groups/{id}
 func getTeacherGroupDetail(w http.ResponseWriter, teacherID, groupID int) {
-	// Проверим, что группа принадлежит этому преподавателю
+	// Проверяем право
 	var g Group
 	err := db.QueryRow(`
-		SELECT id, name, teacher_id, created_at, updated_at
-		FROM groups
-		WHERE id = $1 AND teacher_id = $2
-	`, groupID, teacherID).Scan(&g.ID, &g.Name, &g.TeacherID, &g.CreatedAt, &g.UpdatedAt)
+        SELECT id, name, teacher_id, created_at, updated_at
+        FROM groups
+        WHERE id = $1 AND teacher_id = $2
+    `, groupID, teacherID).Scan(&g.ID, &g.Name, &g.TeacherID, &g.CreatedAt, &g.UpdatedAt)
 	if err == sql.ErrNoRows {
 		http.Error(w, "Группа не найдена или нет доступа", http.StatusNotFound)
 		return
@@ -923,13 +1003,13 @@ func getTeacherGroupDetail(w http.ResponseWriter, teacherID, groupID int) {
 		return
 	}
 
-	// Соберём студентов
+	// Собираем студентов
 	rows, err := db.Query(`
-		SELECT u.id, u.full_name, u.email
-		FROM users u
-		JOIN student_groups sg ON sg.student_id = u.id
-		WHERE sg.group_id = $1 AND sg.removed_at IS NULL
-	`, groupID)
+        SELECT u.id, u.full_name, u.email
+        FROM users u
+        JOIN student_groups sg ON sg.student_id = u.id
+        WHERE sg.group_id = $1 AND sg.removed_at IS NULL
+    `, groupID)
 	if err != nil {
 		http.Error(w, "Не удалось загрузить студентов: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -946,14 +1026,13 @@ func getTeacherGroupDetail(w http.ResponseWriter, teacherID, groupID int) {
 		students = append(students, s)
 	}
 
-	// Формируем полный ответ
 	detail := GroupDetail{
 		ID:        g.ID,
 		Name:      g.Name,
 		TeacherID: g.TeacherID,
+		Students:  students,
 		CreatedAt: g.CreatedAt,
 		UpdatedAt: g.UpdatedAt,
-		Students:  students,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -962,7 +1041,6 @@ func getTeacherGroupDetail(w http.ResponseWriter, teacherID, groupID int) {
 
 // PUT /api/teacher/groups/{id}
 func updateTeacherGroup(w http.ResponseWriter, r *http.Request, teacherID, groupID int) {
-	// Читаем новый payload
 	var payload struct {
 		Name string `json:"name"`
 	}
@@ -971,26 +1049,23 @@ func updateTeacherGroup(w http.ResponseWriter, r *http.Request, teacherID, group
 		return
 	}
 	if payload.Name == "" {
-		http.Error(w, "Название группы обязательно", http.StatusBadRequest)
+		http.Error(w, "Название обязательно", http.StatusBadRequest)
 		return
 	}
 
-	// Обновляем только если группа принадлежит преподавателю
 	res, err := db.Exec(`
-		UPDATE groups
-		SET name = $1, updated_at = NOW()
-		WHERE id = $2 AND teacher_id = $3
-	`, payload.Name, groupID, teacherID)
+        UPDATE groups
+        SET name = $1, updated_at = NOW()
+        WHERE id = $2 AND teacher_id = $3
+    `, payload.Name, groupID, teacherID)
 	if err != nil {
-		http.Error(w, "Ошибка обновления группы: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Ошибка обновления: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	affected, _ := res.RowsAffected()
-	if affected == 0 {
-		http.Error(w, "Группа не найдена или нет прав на редактирование", http.StatusNotFound)
+	if n, _ := res.RowsAffected(); n == 0 {
+		http.Error(w, "Нет доступа или группа не найдена", http.StatusNotFound)
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -1000,46 +1075,64 @@ func updateTeacherGroup(w http.ResponseWriter, r *http.Request, teacherID, group
 //	PUT    /api/teacher/student-groups   — назначить или сменить группу (student_id + group_id)
 //	DELETE /api/teacher/student-groups   — удалить студента из группы (student_id + group_id)
 func teacherStudentGroupsHandler(w http.ResponseWriter, r *http.Request) {
-	// получаем ID преподавателя из контекста
-	uidVal := r.Context().Value("userID")
-	teacherID, ok := uidVal.(int)
-	if !ok {
+	// 1) Достаем Claims
+	claims := getClaims(r.Context())
+	if claims == nil {
 		http.Error(w, "Не авторизован", http.StatusUnauthorized)
 		return
 	}
 
-	// декодируем payload
+	// 2) Берем teacherID: из claims.UserID, или по Email, если UserID==0
+	teacherID := claims.UserID
+	if teacherID == 0 {
+		// дополнительный запрос к БД
+		err := db.QueryRow(
+			`SELECT id FROM users WHERE email = $1 AND role = 'teacher'`,
+			claims.Email,
+		).Scan(&teacherID)
+		if err != nil {
+			http.Error(w, "Не удалось определить ID преподавателя", http.StatusInternalServerError)
+			return
+		}
+	}
+	// log.Printf("teacherStudentGroupsHandler: teacherID(claims)=%d", teacherID)
+
+	// 2) Декодируем payload
 	var p studentGroupPayload
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
 		http.Error(w, "Некорректный JSON: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if p.StudentID == 0 {
-		http.Error(w, "student_id обязателен", http.StatusBadRequest)
+	if p.GroupID == nil {
+		http.Error(w, "group_id обязателен", http.StatusBadRequest)
+		return
+	}
+	if p.StudentID == 0 && p.StudentEmail == "" {
+		http.Error(w, "Надо указать student_id или student_email", http.StatusBadRequest)
 		return
 	}
 
-	// проверка прав на группу
-	if p.GroupID != nil {
-		var ownerID int
-		err := db.QueryRow(
-			`SELECT teacher_id FROM groups WHERE id = $1`,
-			*p.GroupID,
-		).Scan(&ownerID)
-		if err == sql.ErrNoRows {
-			http.Error(w, "Группа не найдена", http.StatusNotFound)
-			return
-		} else if err != nil {
-			http.Error(w, "Ошибка проверки группы: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if ownerID != teacherID {
-			http.Error(w, "Нет прав на управление этой группой", http.StatusForbidden)
-			return
-		}
+	// 3) Проверка прав на группу
+	var owner int
+	err := db.QueryRow(
+		`SELECT teacher_id FROM groups WHERE id = $1`,
+		*p.GroupID,
+	).Scan(&owner)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Группа не найдена", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Ошибка проверки группы: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// log.Printf("teacherStudentGroupsHandler: teacherID(claims)=%d, group.owner=%d\n", teacherID, owner)
+
+	if owner != teacherID {
+		http.Error(w, "Нет прав", http.StatusForbidden)
+		return
 	}
 
-	// выбираем действие по методу
+	// 4) Выполняем действие
 	switch r.Method {
 	case http.MethodPut:
 		handleTeacherAssign(w, r.Context(), p)
@@ -1052,57 +1145,68 @@ func teacherStudentGroupsHandler(w http.ResponseWriter, r *http.Request) {
 
 // Назначение или смена группы (PUT)
 func handleTeacherAssign(w http.ResponseWriter, ctx context.Context, p studentGroupPayload) {
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		http.Error(w, "Не удалось начать транзакцию: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Ошибка транзакции: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback()
 
-	// 1) Закрываем все активные назначения этого студента
+	// lookup by email если нужно
+	if p.StudentID == 0 && p.StudentEmail != "" {
+		if err := tx.QueryRowContext(ctx, `
+            SELECT id FROM users WHERE email = $1 AND role = 'student'
+        `, p.StudentEmail).Scan(&p.StudentID); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Студент не найден", http.StatusBadRequest)
+			} else {
+				http.Error(w, "Ошибка поиска студента: "+err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+	}
+
+	// закрываем старые
 	if _, err := tx.ExecContext(ctx, `
-		UPDATE student_groups
-		SET removed_at = NOW()
-		WHERE student_id = $1 AND removed_at IS NULL
-	`, p.StudentID); err != nil {
-		http.Error(w, "Ошибка закрытия старых назначений: "+err.Error(), http.StatusInternalServerError)
+        UPDATE student_groups
+        SET removed_at = NOW()
+        WHERE student_id = $1 AND removed_at IS NULL
+    `, p.StudentID); err != nil {
+		http.Error(w, "Ошибка закрытия старых: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// 2) Вставляем новое назначение в указанную группу
+	// вставляем новое
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO student_groups (student_id, group_id, assigned_at)
-		VALUES ($1, $2, NOW())
-	`, p.StudentID, p.GroupID); err != nil {
-		http.Error(w, "Ошибка назначения студента: "+err.Error(), http.StatusInternalServerError)
+        INSERT INTO student_groups(student_id, group_id, assigned_at)
+        VALUES($1, $2, NOW())
+    `, p.StudentID, *p.GroupID); err != nil {
+		http.Error(w, "Ошибка назначения: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if err := tx.Commit(); err != nil {
-		http.Error(w, "Не удалось сохранить транзакцию: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Ошибка коммита: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // Удаление студента из группы (DELETE)
 func handleTeacherRemove(w http.ResponseWriter, p studentGroupPayload) {
 	res, err := db.Exec(`
-		UPDATE student_groups
-		SET removed_at = NOW()
-		WHERE student_id = $1 AND group_id = $2 AND removed_at IS NULL
-	`, p.StudentID, p.GroupID)
+        UPDATE student_groups
+        SET removed_at = NOW()
+        WHERE student_id = $1 AND group_id = $2 AND removed_at IS NULL
+    `, p.StudentID, *p.GroupID)
 	if err != nil {
-		http.Error(w, "Ошибка удаления студента из группы: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Ошибка удаления: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	affected, _ := res.RowsAffected()
-	if affected == 0 {
+	if n, _ := res.RowsAffected(); n == 0 {
 		http.Error(w, "Активная запись не найдена", http.StatusBadRequest)
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -2346,7 +2450,7 @@ func teacherSetOpenAnswerHandler(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/teacher/courses/{courseId}/theory
 func CreateTheoryHandler(w http.ResponseWriter, r *http.Request) {
-	// Разбор courseId из URL
+	// 1) парсим courseId
 	p := strings.TrimPrefix(r.URL.Path, "/api/teacher/courses/")
 	courseStr := strings.Split(p, "/")[0]
 	courseID, err := strconv.Atoi(courseStr)
@@ -2355,31 +2459,51 @@ func CreateTheoryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Декодируем тело запроса
+	// 2) декодим тело
 	var req struct {
-		Title     string `json:"title"`
-		Content   string `json:"content"`
-		SortOrder int    `json:"sort_order"`
+		Title   string `json:"title"`
+		Content string `json:"content"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Вставляем в БД
+	// 3) валидация заголовка
+	req.Title = strings.TrimSpace(req.Title)
+	if req.Title == "" {
+		http.Error(w, "Bad Request: title cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	// 4) вычисляем следующий sort_order
+	var maxOrder int
+	err = db.QueryRow(`
+	  SELECT COALESCE(MAX(sort_order), 0)
+	  FROM theory
+	  WHERE course_id = $1
+	`, courseID).Scan(&maxOrder)
+	if err != nil {
+		log.Println("CreateTheory max order query error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	newOrder := maxOrder + 1
+
+	// 5) вставляем новую тему
 	var newID int
 	err = db.QueryRow(`
-        INSERT INTO theory (course_id, title, content, sort_order, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, NOW(), NOW())
-        RETURNING id
-    `, courseID, req.Title, req.Content, req.SortOrder).Scan(&newID)
+	  INSERT INTO theory (course_id, title, content, sort_order, created_at, updated_at)
+	  VALUES ($1, $2, $3, $4, NOW(), NOW())
+	  RETURNING id
+	`, courseID, req.Title, req.Content, newOrder).Scan(&newID)
 	if err != nil {
 		log.Println("CreateTheory query error:", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	// Возвращаем 201 + созданный ID
+	// 6) отдаем клиенту созданный объект
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -2387,39 +2511,52 @@ func CreateTheoryHandler(w http.ResponseWriter, r *http.Request) {
 		"course_id":  courseID,
 		"title":      req.Title,
 		"content":    req.Content,
-		"sort_order": req.SortOrder,
+		"sort_order": newOrder,
 	})
 }
 
 // PUT /api/teacher/theory/{id}
 func UpdateTheoryHandler(w http.ResponseWriter, r *http.Request, id int) {
-	// Декодируем тело запроса
-	var req struct {
-		Title     string `json:"title"`
-		Content   string `json:"content"`
-		SortOrder int    `json:"sort_order"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+	var req map[string]interface{}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Обновляем в БД
-	res, err := db.Exec(`
-        UPDATE theory
-           SET title     = $1,
-               content   = $2,
-               sort_order= $3,
-               updated_at= NOW()
-         WHERE id = $4
-    `, req.Title, req.Content, req.SortOrder, id)
-	if err != nil {
-		log.Println("UpdateTheory query error:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	fields := []string{}
+	args := []interface{}{}
+	i := 1
+
+	if title, ok := req["title"].(string); ok {
+		fields = append(fields, fmt.Sprintf("title = $%d", i))
+		args = append(args, title)
+		i++
+	}
+
+	if content, ok := req["content"].(string); ok {
+		fields = append(fields, fmt.Sprintf("content = $%d", i))
+		args = append(args, content)
+		i++
+	}
+
+	if sortOrder, ok := req["sort_order"].(float64); ok { // JSON numbers -> float64
+		fields = append(fields, fmt.Sprintf("sort_order = $%d", i))
+		args = append(args, int(sortOrder))
+		i++
+	}
+
+	if len(fields) == 0 {
+		http.Error(w, "No fields to update", http.StatusBadRequest)
 		return
 	}
-	if cnt, _ := res.RowsAffected(); cnt == 0 {
-		http.Error(w, "Not Found", http.StatusNotFound)
+
+	args = append(args, id)
+	query := fmt.Sprintf("UPDATE theory SET %s WHERE id = $%d", strings.Join(fields, ", "), i)
+
+	_, err = db.Exec(query, args...)
+	if err != nil {
+		http.Error(w, "DB update error", http.StatusInternalServerError)
 		return
 	}
 
@@ -2484,4 +2621,39 @@ func ReorderTheoryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// GET /api/teacher/theory/{id}
+func GetTheoryHandler(w http.ResponseWriter, r *http.Request, id int) {
+	var theory struct {
+		ID        int       `json:"id"`
+		CourseID  int       `json:"course_id"`
+		Title     string    `json:"title"`
+		Content   string    `json:"content"`
+		SortOrder int       `json:"sort_order"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+	}
+
+	err := db.QueryRow(`
+		SELECT id, course_id, title, content, sort_order, created_at, updated_at
+		FROM theory
+		WHERE id = $1
+	`, id).Scan(
+		&theory.ID, &theory.CourseID, &theory.Title, &theory.Content,
+		&theory.SortOrder, &theory.CreatedAt, &theory.UpdatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		log.Println("GetTheory query error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(theory)
 }

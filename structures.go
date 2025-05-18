@@ -22,8 +22,9 @@ type User struct {
 
 // Claims для JWT
 type Claims struct {
-	Email string `json:"email"`
-	Role  string `json:"role"`
+	UserID int    `json:"user_id"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
 	jwt.StandardClaims
 }
 
@@ -145,4 +146,11 @@ type StudentBrief struct {
 	ID       int    `json:"id"`
 	FullName string `json:"full_name"`
 	Email    string `json:"email"`
+}
+
+// studentGroupPayload — входной JSON для PUT/DELETE /api/teacher/student-groups
+type studentGroupPayload struct {
+	StudentID    int    `json:"student_id"`
+	StudentEmail string `json:"student_email"`
+	GroupID      *int   `json:"group_id"`
 }

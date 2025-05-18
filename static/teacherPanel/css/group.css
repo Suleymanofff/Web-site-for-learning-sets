@@ -1,0 +1,62 @@
+/* Столбец «Действия» в таблице уже покрыт .remove-student-btn,
+     но зададим удобные отступы: */
+.table-wrapper td:last-child {
+	text-align: center;
+	width: 8rem;
+}
+
+/* ============================= */
+/* Стили для формы добавления студента */
+/* ============================= */
+
+/* Контейнер формы: делаем flex, выравниваем по центру, даём небольшой отступ снизу */
+/* #addStudentForm {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-sm);
+	margin-bottom: var(--sp-lg);
+} */
+
+/* Метка заголовка */
+.page-content h3 {
+	margin-bottom: var(--sp-sm);
+	color: var(--primary);
+	font-size: 1.125rem;
+}
+
+/* Поле ввода: растягиваем на всю оставшуюся ширину */
+#addStudentForm .input-add-student {
+	flex: 1 1 auto;
+	padding: var(--sp-sm);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--card-bg);
+	color: var(--text);
+	transition: border-color var(--trans), box-shadow var(--trans);
+}
+
+/* Фокус на поле ввода */
+#addStudentForm .input-add-student:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+/* Кнопка “Добавить”: не растягивается, красивая рамка и hover */
+#addStudentForm .submit-students-info {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: var(--sp-xs);
+	padding: var(--sp-sm) var(--sp-md);
+	background: var(--primary);
+	color: var(--bg);
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+}
+
+#addStudentForm .submit-students-info:hover {
+	opacity: 0.9;
+}

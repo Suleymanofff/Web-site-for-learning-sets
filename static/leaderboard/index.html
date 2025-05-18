@@ -16,7 +16,7 @@
 		<!-- Навигация -->
 		<header class="navbar">
 			<!-- Логотип / название сайта -->
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<!-- Ссылки меню -->
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
@@ -28,7 +28,10 @@
 				>
 					Панель админа
 				</a>
-				<a href="/static/teacherPanel/" id="nav-teacher" style="display: none"
+				<a
+					href="/static/teacherPanel/html/"
+					id="nav-teacher"
+					style="display: none"
 					>Панель учителя</a
 				>
 				<a href="/static/leaderboard/" class="active">Лидерборд</a>

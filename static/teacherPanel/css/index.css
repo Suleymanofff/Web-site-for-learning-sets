@@ -1,0 +1,21 @@
+/* TILES */
+.tiles {
+	display: flex;
+	gap: var(--sp-md);
+	flex-wrap: wrap;
+	margin-top: var(--sp-lg);
+}
+.card {
+	flex: 1 1 30%;
+	background: var(--primary);
+	color: var(--bg);
+	text-align: center;
+	padding: var(--sp-lg) var(--sp-md);
+	border-radius: var(--radius);
+	text-decoration: none;
+	font-size: 1.2rem;
+	transition: background var(--trans);
+}
+.card:hover {
+	background: #3c3bd1;
+}

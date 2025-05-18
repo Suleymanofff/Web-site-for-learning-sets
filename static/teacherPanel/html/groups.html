@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+		<title>Мои группы — Преподавательская панель</title>
+
+		<!-- 1) Смена темы и общий скрипт -->
+		<script src="/static/js/theme-init.js"></script>
+		<script src="/static/teacherPanel/script.js" defer></script>
+
+		<!-- 2) Стили -->
+		<link rel="stylesheet" href="/static/adminPanel/style.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/common.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/groups.css" />
+
+		<!-- 3) Скрипт, специфичный для «Моих групп» -->
+		<script src="/static/teacherPanel/js/teacherGroups.js" defer></script>
+	</head>
+	<body>
+		<header class="navbar">
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
+			<nav class="nav-links">
+				<a href="/static/mainPage/index.html">Главная</a>
+				<a href="/static/teacherPanel/html/index.html">Панель учителя</a>
+				<a href="/static/teacherPanel/html/courses.html">Курсы</a>
+				<a href="/static/teacherPanel/html/tests.html">Тесты</a>
+				<a href="/static/teacherPanel/html/questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/groups.html" class="active"
+					>Мои группы</a
+				>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="userDefault" />
+				</div>
+			</div>
+		</header>
+
+		<main class="page-content">
+			<h1>Мои группы</h1>
+			<div class="table-wrapper">
+				<table id="teacherGroupsTable">
+					<thead>
+						<tr>
+							<th>ID</th>
+							<th>Название</th>
+							<th>Действия</th>
+						</tr>
+					</thead>
+					<tbody id="teacherGroupsBody">
+						<!-- JS заполнит строки здесь -->
+					</tbody>
+				</table>
+			</div>
+		</main>
+	</body>
+</html>

@@ -12,7 +12,7 @@
 	</head>
 	<body>
 		<header class="navbar">
-			<div class="logo">Set Learn</div>
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
 				<a href="/static/mainPage/">Главная</a>
 				<a href="/static/courses/">Курсы</a>
@@ -23,7 +23,10 @@
 					style="display: none"
 					>Панель админа</a
 				>
-				<a href="/static/teacherPanel/" id="nav-teacher" style="display: none"
+				<a
+					href="/static/teacherPanel/html/"
+					id="nav-teacher"
+					style="display: none"
 					>Панель учителя</a
 				>
 			</nav>

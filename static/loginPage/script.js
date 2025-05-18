@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (role === 'admin') {
 				window.location.href = '/static/adminPanel/'
 			} else if (role === 'teacher') {
-				window.location.href = '/static/teacherPanel/'
+				window.location.href = '/static/teacherPanel/html/'
 			} else {
 				window.location.href = '/static/mainPage/'
 			}

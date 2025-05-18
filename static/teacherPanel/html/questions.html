@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Панель учителя — Вопросы</title>
+		<script src="/static/js/theme-init.js"></script>
+		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
+		<link rel="stylesheet" href="/static/teacherPanel/css/common.css" />
+		<!-- <link rel="stylesheet" href="/static/teacherPanel/css/questions.css" /> -->
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+		/>
+		<script src="/static/teacherPanel/script.js" defer></script>
+	</head>
+	<body>
+		<header class="navbar">
+			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
+			<nav class="nav-links">
+				<a href="/static/mainPage/index.html">Главная</a>
+				<a href="/static/teacherPanel/html/index.html">Панель учителя</a>
+				<a href="/static/teacherPanel/html/courses.html">Курсы</a>
+				<a href="/static/teacherPanel/html/tests.html">Тесты</a>
+				<a href="/static/teacherPanel/html/questions.html" class="active"
+					>Вопросы</a
+				>
+				<a href="/static/teacherPanel/html/groups.html">Мои группы</a>
+			</nav>
+			<div class="actions">
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
+				<div class="user-icon" onclick="navigate('/profile')">
+					<img src="/static/img/userDefault.png" alt="userDefault" />
+				</div>
+			</div>
+		</header>
+
+		<main class="page-content">
+			<h1>Управление вопросами</h1>
+
+			<form id="newQuestionForm" class="course-form">
+				<select name="test_id" id="testSelect" required>
+					<option value="">Выберите тест</option>
+				</select>
+				<input
+					name="question_text"
+					type="text"
+					placeholder="Текст вопроса"
+					required
+				/>
+
+				<select name="question_type" id="newQuestionType">
+					<option value="open">Открытый</option>
+					<option value="closed" selected>Закрытый</option>
+				</select>
+				<label id="multiAnswerLabel" class="multi-answer-label">
+					<input type="checkbox" name="multiple_choice" />
+					Несколько ответов
+				</label>
+
+				<input
+					type="text"
+					name="correct_answer_text"
+					id="newAnswerInput"
+					placeholder="Правильный ответ (для открытых)"
+					style="display: none"
+				/>
+
+				<button type="submit"><i class="fas fa-plus"></i> Добавить</button>
+			</form>
+
+			<div class="table-wrapper">
+				<table id="questionsTable">
+					<thead>
+						<tr>
+							<th>Вопрос</th>
+							<th>Тип</th>
+							<th>Несколько</th>
+							<th>Тест ID</th>
+							<th>Дата создания</th>
+							<th>Ответ / Варианты</th>
+							<th>Действия</th>
+						</tr>
+					</thead>
+					<tbody id="questionsBody">
+						<!-- Здесь JS динамически создаёт строки вопросов и их варианты -->
+					</tbody>
+				</table>
+			</div>
+		</main>
+	</body>
+</html>
