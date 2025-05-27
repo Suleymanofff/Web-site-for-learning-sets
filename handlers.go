@@ -1213,107 +1213,171 @@ func handleTeacherRemove(w http.ResponseWriter, p studentGroupPayload) {
 // adminCoursesHandler — GET/POST/PUT/DELETE для /api/admin/courses
 func adminCoursesHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
-
-	// 1) GET — вернуть список всех курсов
 	case http.MethodGet:
-		rows, err := db.Query(`
-            SELECT id, title, description, teacher_id, created_at
-            FROM courses
-            ORDER BY created_at DESC
-        `)
-		if err != nil {
-			http.Error(w, "DB error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer rows.Close()
-
-		var list []CourseInfo
-		for rows.Next() {
-			var c CourseInfo
-			if err := rows.Scan(&c.ID, &c.Title, &c.Description, &c.TeacherID, &c.CreatedAt); err != nil {
-				http.Error(w, "Scan error: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
-			list = append(list, c)
-		}
-		if err := rows.Err(); err != nil {
-			http.Error(w, "Rows error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(list)
-
-	// 2) POST — создать новый курс
+		handleGetCourses(w, r)
 	case http.MethodPost:
-		var req struct {
-			Title       string `json:"title"`
-			Description string `json:"description"`
-			TeacherID   int    `json:"teacher_id"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid input: "+err.Error(), http.StatusBadRequest)
-			return
-		}
-		var newID int
-		err := db.QueryRow(
-			`INSERT INTO courses (title, description, teacher_id)
-             VALUES ($1,$2,$3) RETURNING id`,
-			req.Title, req.Description, req.TeacherID,
-		).Scan(&newID)
-		if err != nil {
-			http.Error(w, "Insert error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]int{"id": newID})
-
-	// 3) PUT — обновить курс
+		handleCreateCourse(w, r)
 	case http.MethodPut:
-		var req CourseInfo
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid input: "+err.Error(), http.StatusBadRequest)
-			return
-		}
-		res, err := db.Exec(
-			`UPDATE courses
-             SET title=$1, description=$2, teacher_id=$3
-             WHERE id=$4`,
-			req.Title, req.Description, req.TeacherID, req.ID,
-		)
-		if err != nil {
-			http.Error(w, "Update error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if cnt, _ := res.RowsAffected(); cnt == 0 {
-			http.Error(w, "Course not found", http.StatusNotFound)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-
-	// 4) DELETE — удалить курс
+		handleUpdateCourse(w, r)
 	case http.MethodDelete:
-		var req struct {
-			ID int `json:"id"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid input: "+err.Error(), http.StatusBadRequest)
-			return
-		}
-		res, err := db.Exec("DELETE FROM courses WHERE id=$1", req.ID)
-		if err != nil {
-			http.Error(w, "Delete error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if cnt, _ := res.RowsAffected(); cnt == 0 {
-			http.Error(w, "Course not found", http.StatusNotFound)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-
+		handleDeleteCourse(w, r)
 	default:
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// Обработчик GET запроса
+func handleGetCourses(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Query(`
+		SELECT id, title, description, teacher_id, created_at 
+		FROM courses 
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "DB error: "+err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var courses []CourseInfo
+	for rows.Next() {
+		var c CourseInfo
+		var teacherID sql.NullInt64 // Для работы с NULL в БД
+
+		err := rows.Scan(
+			&c.ID,
+			&c.Title,
+			&c.Description,
+			&teacherID,
+			&c.CreatedAt,
+		)
+
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Scan error: "+err.Error())
+			return
+		}
+
+		// Конвертируем sql.NullInt64 в *int
+		if teacherID.Valid {
+			id := int(teacherID.Int64)
+			c.TeacherID = &id
+		}
+
+		courses = append(courses, c)
+	}
+
+	respondWithJSON(w, http.StatusOK, courses)
+}
+
+// Обработчик POST запроса (создание)
+func handleCreateCourse(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		TeacherID   *int   `json:"teacher_id"` // Может быть nil
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid input: "+err.Error())
+		return
+	}
+
+	var newID int
+	err := db.QueryRow(`
+		INSERT INTO courses (title, description, teacher_id)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, req.Title, req.Description, convertToNullInt(req.TeacherID)).Scan(&newID)
+
+	if err != nil {
+		handleDBError(w, "Create course error: ", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, map[string]int{"id": newID})
+}
+
+// Обработчик PUT запроса (обновление)
+func handleUpdateCourse(w http.ResponseWriter, r *http.Request) {
+	var req CourseInfo
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid input: "+err.Error())
+		return
+	}
+
+	res, err := db.Exec(`
+		UPDATE courses
+		SET 
+			title = $1,
+			description = $2,
+			teacher_id = $3
+		WHERE id = $4
+	`, req.Title, req.Description, convertToNullInt(req.TeacherID), req.ID)
+
+	if err != nil {
+		handleDBError(w, "Update course error: ", err)
+		return
+	}
+
+	if rowsAffected, _ := res.RowsAffected(); rowsAffected == 0 {
+		respondWithError(w, http.StatusNotFound, "Course not found")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Обработчик DELETE запроса
+func handleDeleteCourse(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ID int `json:"id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid input: "+err.Error())
+		return
+	}
+
+	res, err := db.Exec("DELETE FROM courses WHERE id = $1", req.ID)
+	if err != nil {
+		handleDBError(w, "Delete course error: ", err)
+		return
+	}
+
+	if rowsAffected, _ := res.RowsAffected(); rowsAffected == 0 {
+		respondWithError(w, http.StatusNotFound, "Course not found")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Вспомогательные функции
+
+func convertToNullInt(id *int) interface{} {
+	if id == nil {
+		return nil
+	}
+	return *id
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(payload)
+}
+
+func respondWithError(w http.ResponseWriter, code int, message string) {
+	respondWithJSON(w, code, map[string]string{"error": message})
+}
+
+func handleDBError(w http.ResponseWriter, prefix string, err error) {
+	if strings.Contains(err.Error(), "foreign key constraint") {
+		respondWithError(w, http.StatusBadRequest, "Invalid teacher ID: teacher does not exist")
+		return
+	}
+
+	respondWithError(w, http.StatusInternalServerError, prefix+err.Error())
 }
 
 // teacherCoursesHandler — CRUD курсов для текущего учителя
@@ -1606,7 +1670,6 @@ func teacherTestsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// teacherQuestionsHandler — CRUD вопросов для тестов текущего учителя
 func teacherQuestionsHandler(w http.ResponseWriter, r *http.Request) {
 	// 1) Проверка авторизации и получение teacherID из токена
 	claims := getClaims(r.Context())
@@ -1643,9 +1706,16 @@ func teacherQuestionsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
-		// 4) Запрашиваем вопросы вместе с correct_answer_text
+		// 4) Запрашиваем вопросы вместе с correct_answer_text и difficulty
 		rows, err := db.Query(`
-            SELECT id, test_id, question_text, question_type, multiple_choice, correct_answer_text, created_at
+            SELECT id,
+                   test_id,
+                   question_text,
+                   question_type,
+                   multiple_choice,
+                   correct_answer_text,
+                   difficulty,
+                   created_at
             FROM questions
             WHERE test_id = $1
             ORDER BY created_at
@@ -1666,12 +1736,12 @@ func teacherQuestionsHandler(w http.ResponseWriter, r *http.Request) {
 				&q.QuestionType,
 				&q.MultipleChoice,
 				&q.CorrectAnswerText,
+				&q.Difficulty,
 				&q.CreatedAt,
 			); err != nil {
 				log.Println("Scan question error:", err)
 				continue
 			}
-			// разворачиваем NullString в чистую строку
 			out = append(out, QuestionInfoOut{
 				QuestionInfo:      q,
 				CorrectAnswerText: q.CorrectAnswerText.String,
@@ -1688,6 +1758,7 @@ func teacherQuestionsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid input", http.StatusBadRequest)
 			return
 		}
+
 		// подтверждаем, что тест принадлежит учителю
 		var owner2 int
 		err := db.QueryRow(
@@ -1698,13 +1769,30 @@ func teacherQuestionsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
-		// вставляем вместе с correct_answer_text
+
+		// Предсказание сложности
+		diff, err := predictDifficulty(req.QuestionText)
+		if err != nil {
+			log.Println("ML predict error:", err)
+			http.Error(w, "Failed to predict difficulty", http.StatusInternalServerError)
+			return
+		}
+
+		// вставляем вместе с correct_answer_text и difficulty
 		var newID int
-		err = db.QueryRow(
-			`INSERT INTO questions
-             (test_id, question_text, question_type, multiple_choice, correct_answer_text)
-             VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-			req.TestID, req.QuestionText, req.QuestionType, req.MultipleChoice, req.CorrectAnswerText,
+		err = db.QueryRow(`
+            INSERT INTO questions
+                (test_id, question_text, question_type, multiple_choice, correct_answer_text, difficulty)
+            VALUES
+                ($1,      $2,            $3,            $4,              $5,                  $6)
+            RETURNING id
+        `,
+			req.TestID,
+			req.QuestionText,
+			req.QuestionType,
+			req.MultipleChoice,
+			req.CorrectAnswerText,
+			diff,
 		).Scan(&newID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1715,7 +1803,7 @@ func teacherQuestionsHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]int{"id": newID})
 
-	// PUT /api/teacher/questions
+		// PUT /api/teacher/questions
 	case http.MethodPut:
 		var req teacherQuestionRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1725,25 +1813,46 @@ func teacherQuestionsHandler(w http.ResponseWriter, r *http.Request) {
 		// проверяем право на обновление
 		var owner3 int
 		err := db.QueryRow(`
-            SELECT c.teacher_id
-            FROM questions q
-            JOIN tests t ON t.id = q.test_id
-            JOIN courses c ON c.id = t.course_id
-            WHERE q.id = $1
-        `, req.ID).Scan(&owner3)
+        SELECT c.teacher_id
+        FROM questions q
+        JOIN tests t ON t.id = q.test_id
+        JOIN courses c ON c.id = t.course_id
+        WHERE q.id = $1
+    `, req.ID).Scan(&owner3)
 		if err != nil || owner3 != teacherID {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
-		// обновляем ещё и correct_answer_text
-		res, err := db.Exec(
-			`UPDATE questions
-             SET question_text = $1,
-                 question_type = $2,
-                 multiple_choice = $3,
-                 correct_answer_text = $4
-             WHERE id = $5`,
-			req.QuestionText, req.QuestionType, req.MultipleChoice, req.CorrectAnswerText, req.ID,
+
+		// используем сложность из запроса (если поле осталось пустым — можно дефолтировать)
+		newDiff := req.Difficulty
+		if newDiff == "" {
+			// при отсутствии client-side значения — fall back к ML
+			var errPredict error
+			newDiff, errPredict = predictDifficulty(req.QuestionText)
+			if errPredict != nil {
+				log.Println("ML predict error:", errPredict)
+				http.Error(w, "Failed to predict difficulty", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		// обновляем question_text, correct_answer_text и difficulty
+		res, err := db.Exec(`
+        UPDATE questions
+        SET question_text       = $1,
+            question_type       = $2,
+            multiple_choice     = $3,
+            correct_answer_text = $4,
+            difficulty          = $5
+        WHERE id = $6
+    `,
+			req.QuestionText,
+			req.QuestionType,
+			req.MultipleChoice,
+			req.CorrectAnswerText,
+			newDiff,
+			req.ID,
 		)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -2225,7 +2334,6 @@ func GetTheoryItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /api/tests/{testID}/questions
-// GET /api/tests/{testID}/questions
 func GetTestQuestions(w http.ResponseWriter, r *http.Request) {
 	// 1) Парсим testID из URL "/api/tests/123/questions"
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/tests/"), "/")
@@ -2240,7 +2348,7 @@ func GetTestQuestions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2) Запрашиваем все вопросы этого теста
-	rows, err := db.Query(`SELECT id, test_id, question_text, question_type, multiple_choice, correct_answer_text, created_at
+	rows, err := db.Query(`SELECT id, test_id, question_text, question_type, multiple_choice, correct_answer_text, created_at, difficulty
 		FROM questions
 		WHERE test_id = $1
 		ORDER BY id`, testID)
@@ -2261,6 +2369,7 @@ func GetTestQuestions(w http.ResponseWriter, r *http.Request) {
 			&q.MultipleChoice,
 			&q.CorrectAnswerText,
 			&q.CreatedAt,
+			&q.Difficulty,
 		); err != nil {
 			log.Println("Scan question error:", err)
 			continue
@@ -2656,4 +2765,347 @@ func GetTheoryHandler(w http.ResponseWriter, r *http.Request, id int) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(theory)
+}
+
+// SubmitAnswerHandler — сохраняет историю ответа и обновляет попытку
+func SubmitAnswerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Получаем user_id из JWT-claims
+	claims := getClaims(r.Context())
+	if claims == nil {
+		http.Error(w, "Не авторизован", http.StatusUnauthorized)
+		return
+	}
+	userID := claims.UserID
+	if userID == 0 {
+		// дополнительный запрос к БД
+		err := db.QueryRow(
+			`SELECT id FROM users WHERE email = $1`,
+			claims.Email,
+		).Scan(&userID)
+		if err != nil {
+			http.Error(w, "Не удалось определить ID", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Парсим тело
+	var req struct {
+		QuestionID int  `json:"question_id"`
+		IsCorrect  bool `json:"is_correct"`
+		AttemptID  int  `json:"attempt_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Начинаем транзакцию
+	tx, err := db.Begin()
+	if err != nil {
+		log.Println("Begin tx error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	// 1) Вставляем историю ответа
+	_, err = tx.Exec(
+		`INSERT INTO user_question_answers (user_id, question_id, is_correct, attempt_id)
+         VALUES ($1, $2, $3, $4)`,
+		userID, req.QuestionID, req.IsCorrect, req.AttemptID,
+	)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// 2) Обновляем счётчики в активной попытке
+	res, err := tx.Exec(
+		`UPDATE user_test_attempts
+            SET correct_answers = correct_answers + CASE WHEN $3 THEN 1 ELSE 0 END,
+                wrong_answers   = wrong_answers   + CASE WHEN $3 THEN 0 ELSE 1 END
+          WHERE user_id = $1
+            AND    finished_at IS NULL
+            AND    test_id IN (
+                   SELECT test_id FROM questions WHERE id = $2
+                )`,
+		userID, req.QuestionID, req.IsCorrect,
+	)
+	if err != nil {
+		log.Println("Update user_test_attempts error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	// Optional: проверить, что строка действительно обновилась
+	if count, _ := res.RowsAffected(); count == 0 {
+		log.Println("No active user_test_attempts row to update")
+	}
+
+	// 3) Коммитим
+	if err := tx.Commit(); err != nil {
+		log.Println("Commit tx error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// 4) Возвращаем подтверждение с краткой статистикой (по желанию)
+	resp := struct {
+		Message string `json:"message"`
+	}{"Answer recorded"}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(resp)
+}
+
+func GetAttemptsCount(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	p := strings.TrimPrefix(r.URL.Path, "/api/tests/")
+	parts := strings.Split(p, "/")
+	if len(parts) != 3 || parts[1] != "attempts" || parts[2] != "count" {
+		http.NotFound(w, r)
+		return
+	}
+
+	testID, err := strconv.Atoi(parts[0])
+	if err != nil {
+		http.Error(w, "Invalid test ID", http.StatusBadRequest)
+		return
+	}
+
+	claims := getClaims(r.Context())
+	if claims == nil {
+		http.Error(w, "Не авторизован", http.StatusUnauthorized)
+		return
+	}
+
+	var cnt int
+	err = db.QueryRow(
+		`SELECT COUNT(*) FROM user_test_attempts WHERE user_id=$1 AND test_id=$2`,
+		claims.UserID, testID,
+	).Scan(&cnt)
+	if err != nil {
+		http.Error(w, "DB error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"attemptsDone": cnt})
+}
+
+func CreateTestAttempt(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	p := strings.TrimPrefix(r.URL.Path, "/api/tests/")
+	parts := strings.Split(p, "/")
+	if len(parts) != 2 || parts[1] != "attempts" {
+		http.NotFound(w, r)
+		return
+	}
+
+	testID, err := strconv.Atoi(parts[0])
+	if err != nil {
+		http.Error(w, "Invalid test ID", http.StatusBadRequest)
+		return
+	}
+
+	claims := getClaims(r.Context())
+	if claims == nil {
+		http.Error(w, "Не авторизован", http.StatusUnauthorized)
+		return
+	}
+
+	userID := claims.UserID
+	if userID == 0 {
+		// дополнительный запрос к БД
+		err := db.QueryRow(
+			`SELECT id FROM users WHERE email = $1`,
+			claims.Email,
+		).Scan(&userID)
+		if err != nil {
+			http.Error(w, "Не удалось определить ID преподавателя", http.StatusInternalServerError)
+			return
+		}
+	}
+	// fmt.Printf("CreateTestAttempt: user %d, test %d\n", userID, testID)
+
+	var attemptID, attemptNumber int
+	err = db.QueryRow(`
+        INSERT INTO user_test_attempts
+            (user_id, test_id,
+             started_at, finished_at,
+             score, correct_answers,
+             wrong_answers, attempt_number)
+        VALUES
+            ($1, $2,
+             NOW(), NULL,
+             0, 0,
+             0,
+             (SELECT COALESCE(MAX(attempt_number),0)+1
+                FROM user_test_attempts
+               WHERE user_id = $1 AND test_id = $2))
+        RETURNING id, attempt_number
+    `, userID, testID).Scan(&attemptID, &attemptNumber)
+	if err != nil {
+		fmt.Printf("CreateTestAttempt DB insert error: %v\n", err)
+		http.Error(w, "DB insert error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]int{
+		"attemptId":     attemptID,
+		"attemptNumber": attemptNumber,
+	})
+}
+
+func FinishTestAttempt(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	p := strings.TrimPrefix(r.URL.Path, "/api/attempts/")
+	parts := strings.Split(p, "/")
+	if len(parts) != 2 || parts[1] != "finish" {
+		http.NotFound(w, r)
+		return
+	}
+	attemptID, err := strconv.Atoi(parts[0])
+	if err != nil {
+		http.Error(w, "Invalid attempt ID", http.StatusBadRequest)
+		return
+	}
+
+	var payload struct {
+		Score          int `json:"score"`
+		CorrectAnswers int `json:"correct_answers"`
+		WrongAnswers   int `json:"wrong_answers"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	claims := getClaims(r.Context())
+	if claims == nil {
+		http.Error(w, "Не авторизован", http.StatusUnauthorized)
+		return
+	}
+
+	userID := claims.UserID
+	if userID == 0 {
+		// дополнительный запрос к БД
+		err := db.QueryRow(
+			`SELECT id FROM users WHERE email = $1`,
+			claims.Email,
+		).Scan(&userID)
+		if err != nil {
+			http.Error(w, "Не удалось определить ID преподавателя", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	res, err := db.Exec(`
+        UPDATE user_test_attempts
+           SET finished_at     = NOW(),
+               score           = $1,
+               correct_answers = $2,
+               wrong_answers   = $3
+         WHERE id = $4 AND user_id = $5
+    `, payload.Score, payload.CorrectAnswers, payload.WrongAnswers, attemptID, userID)
+	if err != nil {
+		http.Error(w, "DB update error", http.StatusInternalServerError)
+		return
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		http.Error(w, "Not found or forbidden", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+func GetLatestAttempt(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Извлечь testId из URL
+	p := strings.TrimPrefix(r.URL.Path, "/api/tests/")
+	parts := strings.Split(p, "/")
+	testID, err := strconv.Atoi(parts[0])
+	if err != nil {
+		http.Error(w, "Invalid test ID", http.StatusBadRequest)
+		return
+	}
+
+	// Извлечь userID из JWT-куки
+	claims := getClaims(r.Context())
+	if claims == nil {
+		http.Error(w, "Не авторизован", http.StatusUnauthorized)
+		return
+	}
+	userID := claims.UserID
+	if userID == 0 {
+		// дополнительный запрос к БД
+		err := db.QueryRow(
+			`SELECT id FROM users WHERE email = $1`,
+			claims.Email,
+		).Scan(&userID)
+		if err != nil {
+			http.Error(w, "Не удалось определить ID", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Запрос к БД — последняя завершённая попытка
+	var score, attemptNumber int
+	err = db.QueryRow(`
+	  SELECT score, attempt_number
+	    FROM user_test_attempts
+	   WHERE user_id = $1
+	     AND test_id = $2
+	     AND finished_at IS NOT NULL
+	   ORDER BY started_at DESC
+	   LIMIT 1
+	`, userID, testID).Scan(&score, &attemptNumber)
+
+	if err == sql.ErrNoRows {
+		// нет завершённых попыток — возвращаем 204 No Content
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if err != nil {
+		// какая-то другая ошибка — логируем
+		log.Printf("GetLatestAttempt DB error (test %d, user %d): %v", testID, userID, err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Логируем на всякий случай полученные данные
+	log.Printf("GetLatestAttempt: test=%d user=%d -> score=%d attemptNumber=%d",
+		testID, userID, score, attemptNumber,
+	)
+
+	// Отдать JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{
+		"score":          score,
+		"attempt_number": attemptNumber,
+	})
 }

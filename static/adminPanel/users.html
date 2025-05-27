@@ -11,6 +11,7 @@
 			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
 		/>
 		<script src="/static/adminPanel/script.js" defer></script>
+		<script src="/static/adminPanel/adminUserSearch.js" defer></script>
 	</head>
 	<body>
 		<header class="navbar">
@@ -32,6 +33,20 @@
 
 		<main class="page-content">
 			<h1>Управление пользователями</h1>
+			<div class="search-wrapper">
+				<input
+					id="admin-user-search"
+					type="text"
+					placeholder="Поиск пользователя…"
+					aria-autocomplete="list"
+					aria-controls="admin-user-suggestions"
+				/>
+				<button class="clear-search" aria-label="Очистить поиск">
+					&times;
+				</button>
+				<ul id="admin-user-suggestions" role="listbox"></ul>
+			</div>
+
 			<div class="table-wrapper">
 				<table id="usersTable">
 					<thead>

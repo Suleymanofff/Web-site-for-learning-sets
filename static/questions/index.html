@@ -31,6 +31,7 @@
 					style="display: none"
 					>Панель учителя</a
 				>
+				<a href="index.html" class="active">Тест</a>
 			</nav>
 			<div class="actions">
 				<button id="theme-toggle" aria-label="Переключить тему"></button>
@@ -42,23 +43,32 @@
 
 		<!-- Контент страницы -->
 		<div class="page-content">
-			<h1 id="test-title">Загрузка теста...</h1>
+			<!-- <h1 id="test-title">Загрузка теста...</h1> -->
 			<form id="quiz">
 				<!-- Вопросы вставятся динамически -->
 			</form>
 			<button type="button" id="check">Проверить</button>
 		</div>
 
-		<!-- Popup результатов -->
-		<div class="popup-overlay" id="popupOverlay">
-			<div class="popup-content">
-				<span class="close-btn" onclick="closePopup()">&times;</span>
-				<div class="popup-body">
-					<h2>Результаты теста</h2>
-					<p id="popupResult"></p>
-					<div class="progress-bar">
-						<div class="progress" id="progressFill"></div>
-					</div>
+		<!-- Результат попытки -->
+		<div id="finishAttemptModal" class="modal-overlay" style="display: none">
+			<div class="modal-content">
+				<!-- Крестик закрытия -->
+				<button
+					class="modal-close"
+					aria-label="Закрыть"
+					id="closeFinishAttempt"
+				>
+					×
+				</button>
+				<!-- Заголовок с баллами -->
+				<h3 id="finishAttemptTitle">Вы набрали N баллов</h3>
+				<!-- Сообщение про оставшиеся попытки -->
+				<p id="finishAttemptMsg"></p>
+				<!-- Кнопки действия -->
+				<div class="modal-footer">
+					<button id="btnConfirmFinish">Завершить</button>
+					<button id="btnRetryAttempt">Пройти заново</button>
 				</div>
 			</div>
 		</div>

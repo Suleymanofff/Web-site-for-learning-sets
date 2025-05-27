@@ -181,6 +181,15 @@ body {
 	filter: brightness(0.9);
 }
 
+.card button.muted {
+	opacity: 0.5;
+	cursor: not-allowed;
+	border: 2px solid var(--text-muted);
+	border-color: var(--text-muted);
+	color: var(--text-muted);
+	background: none;
+}
+
 /* Дополнительный отступ для тест‑карточек */
 .test-card {
 	display: flex;
@@ -190,4 +199,89 @@ body {
 	font-size: 0.9rem;
 	color: var(--text-muted);
 	margin-bottom: var(--sp-sm);
+}
+
+.modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+}
+.modal-content {
+	background: var(--bg);
+	color: var(--text);
+	padding: 1.5rem;
+	border-radius: 0.5rem;
+	max-width: 90%;
+	width: 400px;
+}
+.modal-footer {
+	margin-top: 1rem;
+	text-align: right;
+}
+.modal-footer button {
+	margin-left: 0.5rem;
+	padding: 0.5rem 1rem;
+}
+
+#btnStartAttempt {
+	background: transparent;
+	color: green;
+	border: 2px solid green;
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+	text-align: center;
+	display: inline-block;
+}
+
+#btnStartAttempt.muted {
+	opacity: 0.5;
+	cursor: not-allowed;
+	pointer-events: none; /* отключает ховер и клики */
+	border: 2px solid var(--text-muted);
+	border-color: var(--text-muted);
+	color: var(--text-muted);
+	background: none;
+}
+
+#btnStartAttempt:hover {
+	background-color: green;
+	color: white;
+}
+
+#btnCancelStart {
+	background: transparent;
+	border: 2px solid rgb(173, 4, 4);
+	color: rgb(173, 4, 4);
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+	text-align: center;
+	display: inline-block;
+}
+
+#btnCancelStart:hover {
+	background-color: rgb(173, 4, 4);
+	color: white;
+}
+
+.status {
+	margin-top: 0.75rem;
+	padding: 0.4rem 0.8rem;
+	background-color: #e6f4ea;
+	color: #237b4b;
+	font-weight: 500;
+	font-size: 0.95rem;
+	border: 1px solid #b3dec7;
+	border-radius: 6px;
+	display: inline-block;
 }

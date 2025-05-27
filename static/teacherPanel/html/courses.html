@@ -13,6 +13,7 @@
 			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
 		/>
 		<script src="/static/teacherPanel/script.js" defer></script>
+		<script src="/static/teacherPanel/js/courses.js" defer></script>
 	</head>
 	<body>
 		<header class="navbar">
@@ -25,6 +26,7 @@
 				>
 				<a href="/static/teacherPanel/html/tests.html">Тесты</a>
 				<a href="/static/teacherPanel/html/questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/theory.html">Теория</a>
 				<a href="/static/teacherPanel/html/groups.html">Мои группы</a>
 			</nav>
 			<div class="actions">
@@ -37,6 +39,17 @@
 
 		<main class="page-content">
 			<h1>Управление курсами</h1>
+
+			<div class="search-wrapper">
+				<input
+					id="teacher-course-search"
+					type="text"
+					placeholder="Поиск курса…"
+					aria-autocomplete="list"
+					aria-controls="teacher-suggestions"
+				/>
+				<ul id="teacher-suggestions" role="listbox"></ul>
+			</div>
 
 			<form id="newTeacherCourseForm" class="course-form">
 				<input name="title" placeholder="Название курса" required />

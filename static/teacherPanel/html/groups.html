@@ -26,6 +26,7 @@
 				<a href="/static/teacherPanel/html/courses.html">Курсы</a>
 				<a href="/static/teacherPanel/html/tests.html">Тесты</a>
 				<a href="/static/teacherPanel/html/questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/theory.html">Теория</a>
 				<a href="/static/teacherPanel/html/groups.html" class="active"
 					>Мои группы</a
 				>
@@ -40,6 +41,21 @@
 
 		<main class="page-content">
 			<h1>Мои группы</h1>
+
+			<div class="search-wrapper">
+				<input
+					id="teacher-group-search"
+					type="text"
+					placeholder="Поиск группы…"
+					aria-autocomplete="list"
+					aria-controls="teacher-group-suggestions"
+				/>
+				<button class="clear-search" aria-label="Очистить поиск">
+					&times;
+				</button>
+				<ul id="teacher-group-suggestions" role="listbox"></ul>
+			</div>
+
 			<div class="table-wrapper">
 				<table id="teacherGroupsTable">
 					<thead>

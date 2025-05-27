@@ -11,6 +11,7 @@
 			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
 		/>
 		<script src="/static/adminPanel/script.js" defer></script>
+		<script src="/static/adminPanel/adminGroupSearch.js" defer></script>
 	</head>
 	<body>
 		<header class="navbar">
@@ -32,6 +33,20 @@
 
 		<main class="page-content">
 			<h1>Управление группами</h1>
+
+			<div class="search-wrapper">
+				<input
+					id="admin-group-search"
+					type="text"
+					placeholder="Поиск группы…"
+					aria-autocomplete="list"
+					aria-controls="admin-group-suggestions"
+				/>
+				<button class="clear-search" aria-label="Очистить поиск">
+					&times;
+				</button>
+				<ul id="admin-group-suggestions" role="listbox"></ul>
+			</div>
 
 			<!-- Форма создания группы inline наверху -->
 			<form id="newGroupForm" class="inline-form">

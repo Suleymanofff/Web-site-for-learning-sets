@@ -11,6 +11,7 @@
 			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
 		/>
 		<script src="/static/adminPanel/script.js" defer></script>
+		<script src="/static/adminPanel/adminCourseSearch.js" defer></script>
 	</head>
 	<body>
 		<header class="navbar">
@@ -32,6 +33,20 @@
 
 		<main class="page-content">
 			<h1>Управление курсами</h1>
+
+			<div class="search-wrapper">
+				<input
+					id="admin-course-search"
+					type="text"
+					placeholder="Поиск курса…"
+					aria-autocomplete="list"
+					aria-controls="admin-course-suggestions"
+				/>
+				<button class="clear-search" aria-label="Очистить поиск">
+					&times;
+				</button>
+				<ul id="admin-course-suggestions" role="listbox"></ul>
+			</div>
 
 			<form id="newCourseForm" class="course-form">
 				<input name="title" placeholder="Название курса" required />

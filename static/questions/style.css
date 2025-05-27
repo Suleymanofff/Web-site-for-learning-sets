@@ -265,3 +265,117 @@ body {
 		padding: var(--sp-md);
 	}
 }
+
+.question-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8px;
+}
+
+.diff-label {
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 13px;
+	font-weight: bold;
+	text-transform: uppercase;
+}
+
+.diff-label.easy {
+	background-color: #d4edda;
+	color: #155724;
+}
+
+.diff-label.medium {
+	background-color: #fff3cd;
+	color: #856404;
+}
+
+.diff-label.hard {
+	background-color: #f8d7da;
+	color: #721c24;
+}
+
+.modal-overlay {
+	position: fixed;
+	inset: 0;
+	display: none;
+	background: rgba(0, 0, 0, 0.5);
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+}
+.modal-content {
+	position: relative;
+	background-color: var(--bg);
+	color: var(--text);
+	padding: 1.5rem;
+	border-radius: 8px;
+	max-width: 90%;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+#btnConfirmFinish {
+	background: transparent;
+	color: var(--primary);
+	border: 2px solid var(--primary);
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+	text-align: center;
+	display: inline-block;
+}
+
+#btnConfirmFinish:hover {
+	background-color: var(--primary);
+	color: white;
+}
+
+#btnRetryAttempt {
+	background: transparent;
+	color: var(--primary);
+	border: 2px solid var(--primary);
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+	text-align: center;
+	display: inline-block;
+}
+
+#btnRetryAttempt:hover {
+	background-color: var(--primary);
+	color: white;
+}
+
+#btnRetryAttempt.muted {
+	opacity: 0.5;
+	cursor: not-allowed;
+	pointer-events: none; /* отключает ховер и клики */
+	border-color: #ccc;
+	color: #aaa;
+}
+
+#btnRetryAttempt.muted:hover {
+	background-color: transparent;
+	color: #aaa;
+}
+
+.modal-close {
+	color: var(--text);
+	position: absolute;
+	top: 8px;
+	right: 12px;
+	background: transparent;
+	border: none;
+	font-size: 1.5rem;
+	cursor: pointer;
+}
+.modal-footer {
+	margin-top: 1rem;
+	text-align: right;
+}
+.modal-footer button {
+	margin-left: 0.5rem;
+}

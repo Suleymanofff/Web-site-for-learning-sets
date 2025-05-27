@@ -224,15 +224,30 @@ async function loadQuestions(testId) {
           </select>
         </td>
         <td>
-  <input type="checkbox" class="edit-multi ${
-		q.question_type === 'open' ? 'checkbox-disabled' : ''
-	}" 
-         data-id="${q.id}" 
-         ${q.multiple_choice ? 'checked' : ''} 
-         ${q.question_type === 'open' ? 'disabled' : ''}>
-</td>
-
+          <input
+            type="checkbox"
+            class="edit-multi ${
+							q.question_type === 'open' ? 'checkbox-disabled' : ''
+						}"
+            data-id="${q.id}"
+            ${q.multiple_choice ? 'checked' : ''}
+            ${q.question_type === 'open' ? 'disabled' : ''}
+          >
+        </td>
         <td>${q.test_id}</td>
+        <td>
+          <select class="edit-difficulty" data-id="${q.id}">
+            <option value="easy"${
+							q.difficulty === 'easy' ? ' selected' : ''
+						}>лёгкий</option>
+            <option value="medium"${
+							q.difficulty === 'medium' ? ' selected' : ''
+						}>средний</option>
+            <option value="hard"${
+							q.difficulty === 'hard' ? ' selected' : ''
+						}>сложный</option>
+          </select>
+        </td>
         <td>${new Date(q.created_at).toLocaleDateString()}</td>
         <td>
           <button class="manage-options"
@@ -245,7 +260,7 @@ async function loadQuestions(testId) {
           <button class="save-question" data-id="${
 						q.id
 					}"><i class="fas fa-save"></i> Сохранить</button>
-          <button class="del-question"  data-id="${
+          <button class="del-question" data-id="${
 						q.id
 					}"><i class="fas fa-trash"></i> Удалить</button>
         </td>`
@@ -260,7 +275,7 @@ async function loadQuestions(testId) {
 
 			if (q.question_type === 'closed') {
 				trOpts.innerHTML = `
-          <td colspan="7">
+          <td colspan="8">
             <div class="options-wrapper" style="min-height:100px; padding:10px;">
               <table class="options-table">
                 <thead><tr><th>Вариант</th><th>Правильный?</th><th>Действия</th></tr></thead>
@@ -275,27 +290,31 @@ async function loadQuestions(testId) {
           </td>`
 			} else {
 				trOpts.innerHTML = `
-          <td colspan="7">
-      <div class="options-wrapper">
-        <div class="open-answer-wrapper">
-          <label>Правильный ответ:</label>
-          <input type="text" class="open-answer-input" value="${
-						q.correct_answer_text || ''
-					}" />
-              <button class="save-open-answer" data-id="${
-								q.id
-							}">Сохранить</button>
-              <button class="delete-open-answer" data-id="${
-								q.id
-							}">Удалить</button>
+          <td colspan="8">
+            <div class="options-wrapper">
+              <div class="open-answer-wrapper">
+                <label>Правильный ответ:</label>
+                <input type="text" class="open-answer-input" value="${
+									q.correct_answer_text || ''
+								}" />
+                <button class="save-open-answer" data-id="${
+									q.id
+								}">Сохранить</button>
+                <button class="delete-open-answer" data-id="${
+									q.id
+								}">Удалить</button>
+              </div>
             </div>
           </td>`
 			}
 			tbody.appendChild(trOpts)
 		})
+
+		document.dispatchEvent(new CustomEvent('teacherQuestions:loaded'))
 	} catch {
 		console.error('Ошибка загрузки вопросов')
 	}
+	updateDifficultyStyles()
 }
 
 async function initQuestions() {
@@ -459,11 +478,14 @@ async function initQuestions() {
 				.value.trim()
 			const type = row.querySelector(`.edit-type[data-id="${qid}"]`).value
 			const multi = row.querySelector(`.edit-multi[data-id="${qid}"]`).checked
+			const diff = row.querySelector(`.edit-difficulty[data-id="${qid}"]`).value // <-- новое
+
 			const payload = {
 				id: +qid,
 				question_text: text,
 				question_type: type,
 				multiple_choice: multi,
+				difficulty: diff, // <-- новое поле
 			}
 
 			// Для open‑вопросов — корректный ответ
@@ -642,41 +664,49 @@ async function initQuestions() {
 // -----------------------
 // initCourses
 // -----------------------
-function initCourses() {
+async function initCourses() {
 	const tbody = document.getElementById('teacherCoursesBody')
-	fetch('/api/teacher/courses', { credentials: 'include' })
-		.then(r => (r.ok ? r.json() : Promise.reject(r.statusText)))
-		.then(courses => {
-			courses.forEach(c => {
-				const tr = document.createElement('tr')
-				tr.innerHTML = `
-          <td><input class="edit-text" data-id="${c.id}" value="${
-					c.title
-				}"></td>
-          <td><input class="edit-text" data-id="${c.id}" value="${
-					c.description
-				}"></td>
-          <td>${new Date(c.created_at).toLocaleDateString()}</td>
-          <td class="action-cell">
-            <button class="save-course" data-id="${
-							c.id
-						}"><i class="fas fa-save"></i> Сохранить</button>
-            <button class="del-course" data-id="${
-							c.id
-						}"><i class="fas fa-trash"></i> Удалить</button>
-          </td>`
-				tbody.appendChild(tr)
-			})
+	try {
+		const response = await fetch('/api/teacher/courses', {
+			credentials: 'include',
 		})
-		.catch(console.error)
+		if (!response.ok) throw new Error(response.statusText)
+		const courses = await response.json()
 
+		courses.forEach(c => {
+			const tr = document.createElement('tr')
+			tr.innerHTML = `
+		  <td><input class="edit-text" data-id="${c.id}" value="${c.title}"></td>
+		  <td><input class="edit-text" data-id="${c.id}" value="${c.description}"></td>
+		  <td>${new Date(c.created_at).toLocaleDateString()}</td>
+		  <td class="action-cell">
+			<button class="save-course" data-id="${
+				c.id
+			}"><i class="fas fa-save"></i> Сохранить</button>
+			<button class="del-course" data-id="${
+				c.id
+			}"><i class="fas fa-trash"></i> Удалить</button>
+		  </td>
+		`
+			tbody.appendChild(tr)
+		})
+
+		// Уведомляем о завершении загрузки курсов для поиска
+		document.dispatchEvent(new CustomEvent('teacherCourses:loaded'))
+	} catch (err) {
+		console.error('Ошибка загрузки курсов:', err)
+	}
+
+	// Обработка кликов по кнопкам Сохранить/Удалить
 	tbody.addEventListener('click', async e => {
 		const btn = e.target.closest('button')
 		if (!btn) return
 		const id = +btn.dataset.id
 
 		if (btn.classList.contains('save-course')) {
-			const inputs = document.querySelectorAll(`.edit-text[data-id="${id}"]`)
+			const inputs = Array.from(
+				document.querySelectorAll(`.edit-text[data-id="${id}"]`)
+			)
 			const title = inputs[0].value
 			const desc = inputs[1].value
 			try {
@@ -710,81 +740,94 @@ function initCourses() {
 		}
 	})
 
-	document
-		.getElementById('newTeacherCourseForm')
-		.addEventListener('submit', async e => {
-			e.preventDefault()
-			const fd = new FormData(e.target)
-			try {
-				const res = await fetch('/api/teacher/courses', {
-					method: 'POST',
-					credentials: 'include',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						title: fd.get('title'),
-						description: fd.get('description'),
-					}),
-				})
-				if (!res.ok) throw new Error(await res.text())
-				location.reload()
-			} catch (err) {
-				alert(err.message)
-			}
-		})
+	// Обработка добавления нового курса
+	const form = document.getElementById('newTeacherCourseForm')
+	form.addEventListener('submit', async e => {
+		e.preventDefault()
+		const fd = new FormData(form)
+		try {
+			const res = await fetch('/api/teacher/courses', {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					title: fd.get('title'),
+					description: fd.get('description'),
+				}),
+			})
+			if (!res.ok) throw new Error(await res.text())
+			// перезагрузка страницы после успешного добавления
+			location.reload()
+		} catch (err) {
+			alert(err.message)
+		}
+	})
 }
 
 // -----------------------
 // initTests
 // -----------------------
-function initTests() {
+async function initTests() {
+	// Заполняем селект курсами
 	const select = document.querySelector('#newTestForm select[name="course_id"]')
-	fetch('/api/teacher/courses', { credentials: 'include' })
-		.then(r => (r.ok ? r.json() : Promise.reject()))
-		.then(cs => {
-			cs.forEach(c => {
-				const o = document.createElement('option')
-				o.value = c.id
-				o.textContent = c.title
-				select.appendChild(o)
-			})
+	try {
+		const resCourses = await fetch('/api/teacher/courses', {
+			credentials: 'include',
 		})
-		.catch(console.error)
+		if (!resCourses.ok) throw new Error(resCourses.statusText)
+		const cs = await resCourses.json()
+		cs.forEach(c => {
+			const o = document.createElement('option')
+			o.value = c.id
+			o.textContent = c.title
+			select.appendChild(o)
+		})
+	} catch (err) {
+		console.error('Ошибка загрузки курсов для тестов:', err)
+	}
 
+	// Загружаем тесты и рендерим строки
 	const tbody = document.getElementById('testsBody')
-	fetch('/api/teacher/tests', { credentials: 'include' })
-		.then(r => (r.ok ? r.json() : Promise.reject()))
-		.then(ts => {
-			ts.forEach(t => {
-				const tr = document.createElement('tr')
-				tr.innerHTML = `
-          <td><input class="edit-text" data-id="${t.id}" value="${
-					t.title
-				}"></td>
-          <td><input class="edit-text" data-id="${t.id}" value="${
-					t.description
-				}"></td>
-          <td>${t.course_id}</td>
-          <td>${new Date(t.created_at).toLocaleDateString()}</td>
-          <td class="action-cell">
-            <button class="save-test" data-id="${
-							t.id
-						}"><i class="fas fa-save"></i> Сохранить</button>
-            <button class="del-test"  data-id="${
-							t.id
-						}"><i class="fas fa-trash"></i> Удалить</button>
-          </td>`
-				tbody.appendChild(tr)
-			})
+	try {
+		const resTests = await fetch('/api/teacher/tests', {
+			credentials: 'include',
 		})
-		.catch(console.error)
+		if (!resTests.ok) throw new Error(resTests.statusText)
+		const ts = await resTests.json()
+		ts.forEach(t => {
+			const tr = document.createElement('tr')
+			tr.innerHTML = `
+		  <td><input class="edit-text" data-id="${t.id}" value="${t.title}"></td>
+		  <td><input class="edit-text" data-id="${t.id}" value="${t.description}"></td>
+		  <td>${t.course_id}</td>
+		  <td>${new Date(t.created_at).toLocaleDateString()}</td>
+		  <td class="action-cell">
+			<button class="save-test" data-id="${
+				t.id
+			}"><i class="fas fa-save"></i> Сохранить</button>
+			<button class="del-test" data-id="${
+				t.id
+			}"><i class="fas fa-trash"></i> Удалить</button>
+		  </td>
+		`
+			tbody.appendChild(tr)
+		})
+		// Сигнализируем модулю поиска о готовности таблицы
+		document.dispatchEvent(new CustomEvent('teacherTests:loaded'))
+	} catch (err) {
+		console.error('Ошибка загрузки тестов:', err)
+	}
 
+	// Обработка кликов Сохранить/Удалить
 	tbody.addEventListener('click', async e => {
 		const btn = e.target.closest('button')
 		if (!btn) return
 		const id = +btn.dataset.id
 
 		if (btn.classList.contains('save-test')) {
-			const inputs = document.querySelectorAll(`.edit-text[data-id="${id}"]`)
+			const inputs = Array.from(
+				document.querySelectorAll(`.edit-text[data-id="${id}"]`)
+			)
 			const title = inputs[0].value
 			const desc = inputs[1].value
 			try {
@@ -818,9 +861,11 @@ function initTests() {
 		}
 	})
 
-	document.getElementById('newTestForm').addEventListener('submit', async e => {
+	// Обработка формы добавления теста
+	const form = document.getElementById('newTestForm')
+	form.addEventListener('submit', async e => {
 		e.preventDefault()
-		const fd = new FormData(e.target)
+		const fd = new FormData(form)
 		try {
 			const res = await fetch('/api/teacher/tests', {
 				method: 'POST',
@@ -834,11 +879,8 @@ function initTests() {
 			})
 			if (!res.ok) throw new Error(await res.text())
 			const data = await res.json()
-			// поддерживаем старый ключ id и новый test_id
 			const newTestId = data.id ?? data.test_id
-			if (!newTestId) {
-				throw new Error('Не удалось получить ID созданного теста')
-			}
+			if (!newTestId) throw new Error('Не удалось получить ID созданного теста')
 			openQuestionModal(newTestId)
 		} catch (err) {
 			alert('Ошибка создания теста: ' + err.message)
@@ -856,7 +898,7 @@ function initTests() {
 let _theoryList = []
 let _theoryCourseId = null
 let _theoryCourseTitle = ''
-// В самом верху скрипта, перед initTheory
+
 let quill,
 	quillInitialized = false
 let _isCreatingTheory = false
@@ -901,6 +943,8 @@ async function initTheory() {
 		'page-title'
 	).textContent = `Теория — ${_theoryCourseTitle}`
 	await reloadTheoryList(_theoryCourseId)
+	// Сигнализируем модулю поиска, что темы отрисованы
+	document.dispatchEvent(new CustomEvent('teacherTheory:loaded'))
 
 	// 3) При смене селекта — перезагружаем темы
 	select.addEventListener('change', async e => {
@@ -910,6 +954,8 @@ async function initTheory() {
 			'page-title'
 		).textContent = `Теория — ${_theoryCourseTitle}`
 		await reloadTheoryList(_theoryCourseId)
+		// Снова кидаем событие после перерисовки
+		document.dispatchEvent(new CustomEvent('teacherTheory:loaded'))
 	})
 
 	// 4) Обработка формы создания новой темы — вешаем только один раз
@@ -936,6 +982,8 @@ async function initTheory() {
 				e.target.reset()
 				await reloadTheoryList(_theoryCourseId)
 				showToast('Тема успешно создана!', 'success')
+				// Сигнал для поиска: новые строки отрисованы
+				document.dispatchEvent(new CustomEvent('teacherTheory:loaded'))
 			} catch (err) {
 				console.error('Ошибка создания темы:', err)
 				showToast('Ошибка при создании темы: ' + err.message, 'error')
@@ -1005,27 +1053,6 @@ async function reloadTheoryList(courseId) {
 		card.classList.add('theory-card')
 		card.dataset.id = item.id
 
-		// --- Удаление темы ---
-		const delBtn = document.createElement('button')
-		delBtn.classList.add('btn', 'btn-danger')
-		delBtn.textContent = 'Удалить'
-
-		delBtn.addEventListener('click', async () => {
-			if (!confirm('Удалить тему?')) return
-			try {
-				const delRes = await fetch(`/api/teacher/theory/${item.id}`, {
-					method: 'DELETE',
-					credentials: 'include',
-				})
-				if (!delRes.ok) throw new Error(`Код ${delRes.status}`)
-				await reloadTheoryList(courseId)
-			} catch (err) {
-				console.error('Ошибка при удалении темы:', err)
-				alert('Не удалось удалить тему: ' + err.message)
-			}
-		})
-		card.appendChild(delBtn)
-
 		// --- Редактирование заголовка ---
 		const titleInput = document.createElement('input')
 		titleInput.type = 'text'
@@ -1033,6 +1060,17 @@ async function reloadTheoryList(courseId) {
 		titleInput.value = item.title
 		card.appendChild(titleInput)
 
+		// --- Кнопка редактирования содержания ---
+		const editBtn = document.createElement('button')
+		editBtn.classList.add('edit-content', 'btn')
+		editBtn.textContent = 'Редактировать содержание'
+		editBtn.setAttribute('data-action', 'open-theory-modal')
+		editBtn.setAttribute('data-topic-id', item.id)
+		card.appendChild(editBtn)
+
+		container.appendChild(card)
+
+		// кнопка сохранить
 		const saveBtn = document.createElement('button')
 		saveBtn.classList.add('save-theory')
 		saveBtn.textContent = 'Сохранить'
@@ -1063,15 +1101,26 @@ async function reloadTheoryList(courseId) {
 		})
 		card.appendChild(saveBtn)
 
-		// --- Кнопка редактирования содержания ---
-		const editBtn = document.createElement('button')
-		editBtn.classList.add('edit-content', 'btn')
-		editBtn.textContent = 'Редактировать содержание'
-		editBtn.setAttribute('data-action', 'open-theory-modal')
-		editBtn.setAttribute('data-topic-id', item.id)
-		card.appendChild(editBtn)
+		// --- Удаление темы ---
+		const delBtn = document.createElement('button')
+		delBtn.classList.add('btn', 'btn-danger')
+		delBtn.textContent = 'Удалить'
 
-		container.appendChild(card)
+		delBtn.addEventListener('click', async () => {
+			if (!confirm('Удалить тему?')) return
+			try {
+				const delRes = await fetch(`/api/teacher/theory/${item.id}`, {
+					method: 'DELETE',
+					credentials: 'include',
+				})
+				if (!delRes.ok) throw new Error(`Код ${delRes.status}`)
+				await reloadTheoryList(courseId)
+			} catch (err) {
+				console.error('Ошибка при удалении темы:', err)
+				alert('Не удалось удалить тему: ' + err.message)
+			}
+		})
+		card.appendChild(delBtn)
 	})
 }
 
@@ -1119,7 +1168,7 @@ async function openTheoryModal(topicId) {
 				if (!file) return
 				const fd = new FormData()
 				fd.append('file', file)
-				showLoader()
+				// showLoader()
 				try {
 					const res = await fetch(`/api/teacher/upload-theory-asset`, {
 						method: 'POST',
@@ -1169,14 +1218,6 @@ async function openTheoryModal(topicId) {
 	})
 }
 
-// Загрузка PDF/изображений
-// document
-// 	.getElementById('uploadPdfBtn')
-// 	.addEventListener('click', () => document.getElementById('pdfInput').click())
-// document
-// 	.getElementById('uploadImgBtn')
-// 	.addEventListener('click', () => document.getElementById('imgInput').click())
-
 function insertHtmlAtCursor(html) {
 	const sel = window.getSelection()
 	if (!sel.rangeCount) return
@@ -1199,96 +1240,65 @@ function insertHtmlAtCursor(html) {
 }
 
 async function handleFileUpload(inputEl, field) {
+	if (!inputEl.files || inputEl.files.length === 0) return
+
 	const file = inputEl.files[0]
-	if (!file) return
+	const allowedTypes = {
+		image: ['image/jpeg', 'image/png', 'image/gif'],
+		pdf: ['application/pdf'],
+	}
+
+	// Валидация файла
+	if (!allowedTypes[field].includes(file.type)) {
+		showToast('Недопустимый тип файла', 'error')
+		return
+	}
+
+	if (file.size > 5 * 1024 * 1024) {
+		// 5MB лимит
+		showToast('Файл слишком большой (макс. 5MB)', 'error')
+		return
+	}
 
 	const fd = new FormData()
 	fd.append('file', file)
+	fd.append('type', field)
 
 	try {
-		const res = await fetch('/api/teacher/upload-theory-asset', {
+		showToast('Загрузка файла...', 'info')
+		const response = await fetch('/api/teacher/upload-theory-asset', {
 			method: 'POST',
 			credentials: 'include',
 			body: fd,
 		})
-		if (!res.ok) throw new Error(`Status ${res.status}`)
-		const data = await res.json()
-		const html =
-			field === 'pdf'
-				? `<a href="${data.url}" …>${file.name}</a>`
-				: `<img src="${data.url}" …>`
-		insertHtmlAtCursor(html)
-		showToast('Файл загружен', 'success')
-	} catch (err) {
-		console.error(err)
-		showToast('Не удалось загрузить файл: ' + err.message, 'error')
+
+		if (!response.ok) throw new Error(await response.text())
+
+		const data = await response.json()
+		const safeUrl = DOMPurify.sanitize(data.url)
+		const safeName = this.escapeHtml(file.name)
+
+		switch (field) {
+			case 'image':
+				quill.insertEmbed(quill.getSelection().index, 'image', safeUrl)
+				break
+
+			case 'pdf':
+				quill.insertEmbed(quill.getSelection().index, 'pdf', {
+					url: safeUrl,
+					name: safeName,
+				})
+				break
+		}
+
+		showToast('Файл успешно загружен', 'success')
+	} catch (error) {
+		console.error('Ошибка загрузки:', error)
+		showToast(`Ошибка: ${error.message}`, 'error')
+	} finally {
+		inputEl.value = '' // Сброс инпута
 	}
 }
-
-// document
-// 	.getElementById('saveTheoryContent')
-// 	.addEventListener('click', async () => {
-// 		const content = quill.root.innerHTML
-// 		try {
-// 			const res = await fetch(`/api/teacher/theory/${currentTheoryId}`, {
-// 				method: 'PUT',
-// 				credentials: 'include',
-// 				headers: { 'Content-Type': 'application/json' },
-// 				body: JSON.stringify({ content }),
-// 			})
-// 			if (!res.ok) throw new Error(`Ошибка ${res.status}`)
-// 			showToast('Содержание сохранено', 'success')
-// 			document.getElementById('theoryModal').classList.add('hidden')
-// 		} catch (err) {
-// 			console.error(err)
-// 			showToast(err.message, 'error')
-// 		}
-// 	})
-
-/**
- * Показывает уведомление (toast) в правом верхнем углу.
- * @param {string} message - Сообщение для отображения.
- * @param {'success' | 'error' | 'info'} type - Тип уведомления.
- * @param {number} duration - Длительность показа в миллисекундах.
- */
-// function showToast(message, type = 'info', duration = 3000) {
-// 	const toastId = 'toast-' + Date.now()
-// 	const toastContainer =
-// 		document.getElementById('toast-container') || createToastContainer()
-
-// 	const toast = document.createElement('div')
-// 	toast.classList.add('toast', `toast-${type}`)
-// 	toast.id = toastId
-// 	toast.setAttribute('role', 'alert')
-// 	toast.setAttribute('aria-live', 'assertive')
-
-// 	const messageSpan = document.createElement('span')
-// 	messageSpan.textContent = message
-// 	toast.appendChild(messageSpan)
-
-// 	const closeButton = document.createElement('button')
-// 	closeButton.classList.add('toast-close-btn')
-// 	closeButton.innerHTML = '&times;'
-// 	closeButton.setAttribute('aria-label', 'Закрыть')
-// 	closeButton.onclick = () => {
-// 		toast.classList.remove('show')
-// 		setTimeout(() => toast.remove(), 300) // Дать время для анимации исчезновения
-// 	}
-// 	toast.appendChild(closeButton)
-
-// 	toastContainer.appendChild(toast)
-
-// 	// Показать toast
-// 	setTimeout(() => {
-// 		toast.classList.add('show')
-// 	}, 10) // Небольшая задержка для срабатывания CSS-transition
-
-// 	// Скрыть и удалить toast по истечении времени
-// 	setTimeout(() => {
-// 		toast.classList.remove('show')
-// 		setTimeout(() => toast.remove(), 300)
-// 	}, duration)
-// }
 
 function createToastContainer() {
 	const container = document.createElement('div')
@@ -1506,7 +1516,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (!file) return
 			const fd = new FormData()
 			fd.append('file', file)
-			showLoader()
+			// showLoader()
 			try {
 				const res = await fetch('/api/teacher/upload-theory-asset', {
 					method: 'POST',
@@ -1524,7 +1534,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				console.error(err)
 				showToast('Ошибка загрузки PDF: ' + err.message, 'error')
 			} finally {
-				hideLoader()
+				// hideLoader()
 			}
 		}
 	})
@@ -1578,4 +1588,45 @@ document.addEventListener('DOMContentLoaded', () => {
 			document.getElementById('theoryModal').classList.add('hidden')
 		})
 	}
+
+	document
+		.getElementById('questionsBody')
+		.addEventListener('change', async e => {
+			if (!e.target.classList.contains('edit-difficulty')) return
+
+			const select = e.target
+			const id = select.dataset.id
+			const newDiff = select.value
+
+			// Найти остальные поля из строки
+			const row = select.closest('tr')
+			const text = row.querySelector('.edit-text').value
+			const type = row.querySelector('.edit-type').value
+			const multi = row.querySelector('.edit-multi').checked
+			// Правильный ответ для открытых:
+			const correct =
+				row.nextElementSibling.querySelector('.open-answer-input')?.value || ''
+
+			const payload = {
+				id: Number(id),
+				test_id: testId, // передайте текущий testId
+				question_text: text,
+				question_type: type,
+				multiple_choice: multi,
+				correct_answer_text: correct,
+				difficulty: newDiff,
+			}
+
+			const res = await fetch('/api/teacher/questions', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify(payload),
+			})
+
+			if (!res.ok) {
+				alert('Не удалось сохранить сложность')
+				// можно откатить select к предыдущему значению при желании
+			}
+		})
 })

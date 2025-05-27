@@ -83,6 +83,7 @@ body {
 	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 	gap: var(--sp-md);
 	padding: var(--sp-md);
+	grid-auto-rows: 280px;
 }
 
 /* TILE */

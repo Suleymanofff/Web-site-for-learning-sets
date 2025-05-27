@@ -39,37 +39,6 @@
 	color: var(--primary);
 }
 
-button.save-test {
-	background: var(--primary);
-	color: var(--bg);
-	border: none;
-	padding: var(--sp-xs) var(--sp-sm);
-	border-radius: var(--radius);
-	cursor: pointer;
-	transition: opacity var(--trans);
-	margin-right: var(--sp-xs);
-}
-
-button.del-test {
-	background: transparent;
-	border: 1px solid var(--text-muted);
-	color: var(--text-muted);
-	padding: var(--sp-xs) var(--sp-sm);
-	border-radius: var(--radius);
-	cursor: pointer;
-	transition: background var(--trans), color var(--trans), opacity var(--trans);
-}
-
-button.save-test:hover {
-	opacity: 0.8;
-}
-
-button.del-test:hover {
-	background: var(--text-muted);
-	color: var(--bg);
-	opacity: 0.8;
-}
-
 /* Кнопка "Сохранить все вопросы" */
 .save-questions {
 	margin: var(--sp-sm) var(--sp-md);
@@ -244,4 +213,79 @@ button.del-test:hover {
 	background: var(--border);
 	cursor: not-allowed;
 	opacity: 0.6;
+}
+
+/* Контейнер поиска */
+.search-wrapper {
+	position: relative;
+	max-width: 600px;
+	margin: 1rem auto;
+}
+
+/* Само поле ввода */
+#teacher-test-search {
+	width: 100%;
+	padding: 0.5rem 1rem;
+	font-size: 1rem;
+	border: 2px solid var(--primary);
+	border-radius: var(--radius);
+	outline: none;
+}
+
+#teacher-test-search:focus {
+	border-color: var(--primary-dark);
+}
+
+/* Кнопка очистки */
+.clear-search {
+	position: absolute;
+	top: 50%;
+	right: 0.75rem;
+	transform: translateY(-50%);
+	background: transparent;
+	border: none;
+	font-size: 1.25rem;
+	cursor: pointer;
+	color: #666;
+	display: none; /* показывается скриптом при вводе */
+}
+
+/* Список подсказок */
+#teacher-test-suggestions {
+	position: absolute;
+	top: calc(100% + 2px);
+	left: 0;
+	right: 0;
+	z-index: 10;
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-top: none;
+	max-height: 200px;
+	overflow-y: auto;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Элемент подсказки */
+#teacher-test-suggestions li {
+	padding: 0.5rem 1rem;
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* Подсветка при наведении и при выборе стрелками */
+#teacher-test-suggestions li:hover,
+#teacher-test-suggestions li.active {
+	background: rgba(79, 70, 229, 0.1);
+}
+
+/* Подсветка найденного фрагмента */
+#teacher-test-suggestions li mark {
+	background-color: yellow;
+	padding: 0;
+	border-radius: 2px;
 }

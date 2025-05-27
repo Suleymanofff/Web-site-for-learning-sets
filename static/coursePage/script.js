@@ -81,6 +81,35 @@ async function fetchCourses() {
 	return await res.json()
 }
 
+async function fetchLatestAttempt(testId) {
+	const res = await fetch(`/api/tests/${testId}/attempts/latest`, {
+		credentials: 'same-origin',
+		headers: authHeaders(),
+	})
+	console.log(`fetchLatestAttempt(${testId}) → status`, res.status)
+
+	if (res.status === 204) {
+		console.log(`  → нет завершённых попыток`)
+		return null
+	}
+	if (!res.ok) {
+		console.warn(`  → ошибка запроса: ${res.status}`)
+		return null
+	}
+
+	// Если 200 OK — читаем тело
+	const data = await res.json()
+	console.log(`  → тело ответа:`, data)
+
+	// Маппим snake_case → camelCase
+	const latest = {
+		score: data.score,
+		attemptNumber: data.attempt_number ?? data.attemptNumber,
+	}
+	console.log(`  → mapped latest:`, latest)
+	return latest
+}
+
 async function loadCoursePage() {
 	const courseId = getCourseId()
 	if (!courseId) return
@@ -105,9 +134,12 @@ async function loadCoursePage() {
 	await loadTests(courseId)
 }
 
+let currentAttempt = null // { attemptId, attemptNumber, startedAt, answers:{ [q]:true/false } }
+const MAX_ATTEMPTS = 2
+
 async function loadTheory(courseId) {
 	const container = document.getElementById('theory-list')
-	container.textContent = 'Загрузка теории…'
+	container.textContent = 'Загрузка теории...'
 
 	try {
 		const res = await fetch(`/api/courses/${courseId}/theory`, {
@@ -119,28 +151,36 @@ async function loadTheory(courseId) {
 		const data = await res.json()
 		container.innerHTML = ''
 
-		if (!Array.isArray(data) || !data.length) {
-			container.textContent = 'Темы теории отсутствуют'
-			return
-		}
-
 		data.forEach(item => {
 			const div = document.createElement('div')
 			div.className = 'card'
 
-			const textOnly = item.content.replace(/<[^>]+>/g, '')
+			// 1. Удаляем HTML-теги и преобразуем HTML-сущности
+			const tempDiv = document.createElement('div')
+			tempDiv.innerHTML = item.content
+			let textContent = tempDiv.textContent || tempDiv.innerText || ''
+
+			// 2. Очистка и обрезка текста
+			textContent = textContent
+				.replace(/\s+/g, ' ') // Заменяем множественные пробелы
+				.trim()
+
+			// 3. Умная обрезка до 40 символов
 			const preview =
-				textOnly.length > 100 ? `${textOnly.slice(0, 40)}…` : textOnly
+				textContent.length > 40
+					? textContent.substring(0, 40).split(' ').slice(0, -1).join(' ') +
+					  '...'
+					: textContent
 
 			div.innerHTML = `
-        <h3>${item.title}</h3>
-        ${preview ? `<p>${preview}</p>` : ''}
-        <button onclick="navigate('/static/theory/index.html?topic=${
-					item.id
-				}')">
-          Читать
-        </button>
-      `
+                <h3>${item.title}</h3>
+                ${textContent ? `<p>${preview}</p>` : ''}
+                <button onclick="navigate('/static/theory/index.html?topic=${
+									item.id
+								}')">
+                    Читать
+                </button>
+            `
 			container.appendChild(div)
 		})
 	} catch (err) {
@@ -167,32 +207,177 @@ async function loadTests(courseId) {
 			return
 		}
 
-		tests.forEach(test => {
-			const div = document.createElement('div')
-			div.className = 'card test-card'
-			div.innerHTML = `
-        <h3>${test.title}</h3>
-        ${test.description ? `<p>${test.description}</p>` : ''}
-        <div class="info">Вопросов: ${test.question_count}</div>
-        ${
+		for (const test of tests) {
+			// 1) Сколько попыток сделано
+			let done = await getAttemptsDone(test.id)
+			// 2) Последняя завершённая попытка (или null)
+			const latest = await fetchLatestAttempt(test.id)
+			const remaining = MAX_ATTEMPTS - (latest?.attemptNumber || 0)
+
+			// 3) Рендер карточки
+			const card = document.createElement('div')
+			card.className = 'card test-card'
+
+			const title = document.createElement('h3')
+			title.textContent = test.title
+			card.appendChild(title)
+
+			if (test.description) {
+				const desc = document.createElement('p')
+				desc.textContent = test.description
+				card.appendChild(desc)
+			}
+
+			const infoCount = document.createElement('div')
+			infoCount.className = 'info'
+			infoCount.textContent = `Вопросов: ${test.question_count}`
+			card.appendChild(infoCount)
+
+			if (test.created_at) {
+				const infoDate = document.createElement('div')
+				infoDate.className = 'info'
+				infoDate.textContent = `Создано: ${new Date(
 					test.created_at
-						? `<div class="info">Создано: ${new Date(
-								test.created_at
-						  ).toLocaleDateString()}</div>`
-						: ''
-				}
-        <button onclick="navigate('/static/questions/index.html?test=${
-					test.id
-				}')">
-          Пройти тест
-        </button>
-      `
-			container.appendChild(div)
-		})
+				).toLocaleDateString()}`
+				card.appendChild(infoDate)
+			}
+
+			console.log(`Test ${test.id}: done=${done}, latest=`, latest)
+
+			// 4) Кнопка «Пройти тест»
+			const btn = document.createElement('button')
+			btn.textContent = 'Пройти тест'
+			btn.setAttribute('data-test-id', test.id)
+
+			if (remaining <= 0) {
+				btn.classList.add('muted')
+				btn.addEventListener('click', () => onClickStart(test.id, remaining))
+			} else {
+				btn.addEventListener('click', () => onClickStart(test.id, remaining))
+			}
+			card.appendChild(btn)
+
+			// 5) Если есть результаты — плашка с баллами
+			if (latest) {
+				const status = document.createElement('div')
+				status.className = 'status'
+				status.textContent = `Пройден: ${latest.score} баллов`
+				card.appendChild(status)
+			}
+
+			container.appendChild(card)
+		}
 	} catch (err) {
-		console.error('loadTests error:', err)
+		console.error('❌ Ошибка при загрузке тестов:', err)
 		container.textContent = 'Ошибка при загрузке тестов'
 	}
+}
+
+async function onClickStart(testId) {
+	// получаем сколько осталось
+	const latest = await fetchLatestAttempt(testId)
+	const remaining = MAX_ATTEMPTS - (latest?.attemptNumber || 0)
+
+	const titleEl = document.getElementById('startAttemptTitle')
+	const btnStart = document.getElementById('btnStartAttempt')
+
+	if (remaining <= 0) {
+		// исчерпаны попытки
+		titleEl.textContent = `Вы истратили обе попытки`
+		btnStart.disabled = true
+		btnStart.classList.add('muted')
+	} else {
+		// остались попытки
+		titleEl.textContent = `У вас есть ${remaining} попытк${
+			remaining === 1 ? 'а' : 'и'
+		}`
+		btnStart.disabled = false
+		btnStart.classList.remove('muted')
+
+		btnStart.onclick = async () => {
+			closeModal('startAttemptModal')
+			const { attemptId, attemptNumber } = await createAttempt(testId)
+			currentAttempt = {
+				attemptId,
+				attemptNumber,
+				startedAt: Date.now(),
+				answers: {},
+				courseId: getCourseId(),
+				testId,
+			}
+			saveState()
+			navigate(
+				`/static/questions/index.html?test=${testId}&course=${getCourseId()}`
+			)
+		}
+	}
+
+	// Показываем модалку всегда
+	showModal('startAttemptModal')
+
+	// Привязываем отмену
+	document.getElementById('btnCancelStart').onclick = () =>
+		closeModal('startAttemptModal')
+}
+
+// ----- API: Работа с попытками -----
+async function getAttemptsDone(testId) {
+	const res = await fetch(`/api/tests/${testId}/attempts/count`, {
+		credentials: 'include', // ← ключевой момент
+	})
+	if (!res.ok) throw new Error(`Ошибка ${res.status}`)
+	return (await res.json()).attemptsDone
+}
+
+async function createAttempt(testId) {
+	const res = await fetch(`/api/tests/${testId}/attempts`, {
+		method: 'POST',
+		credentials: 'include',
+	})
+	if (!res.ok) throw new Error(`Не удалось создать попытку: ${res.status}`)
+	return await res.json()
+}
+
+async function finishAttempt(attemptId, score, correct, wrong) {
+	const res = await fetch(`/api/attempts/${attemptId}/finish`, {
+		method: 'PATCH',
+		credentials: 'include', // ← обязательно
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			score,
+			correct_answers: correct,
+			wrong_answers: wrong,
+		}),
+	})
+	if (!res.ok) throw new Error(`Не удалось завершить попытку: ${res.status}`)
+	return await res.json()
+}
+
+function saveState() {
+	localStorage.setItem('currentAttempt', JSON.stringify(currentAttempt))
+}
+function loadState() {
+	const raw = localStorage.getItem('currentAttempt')
+	currentAttempt = raw ? JSON.parse(raw) : null
+}
+function clearState() {
+	localStorage.removeItem('currentAttempt')
+	currentAttempt = null
+}
+
+function showModal(id) {
+	const overlay = document.getElementById(id)
+	overlay.style.display = 'flex'
+
+	// Закрытие по клику вне .modal-content
+	overlay.onclick = e => {
+		if (e.target === overlay) closeModal(id)
+	}
+}
+function closeModal(id) {
+	document.getElementById(id).style.display = 'none'
 }
 
 document.addEventListener('DOMContentLoaded', () => {

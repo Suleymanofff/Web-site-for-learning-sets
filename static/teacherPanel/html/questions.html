@@ -7,12 +7,13 @@
 		<script src="/static/js/theme-init.js"></script>
 		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
 		<link rel="stylesheet" href="/static/teacherPanel/css/common.css" />
-		<!-- <link rel="stylesheet" href="/static/teacherPanel/css/questions.css" /> -->
+		<link rel="stylesheet" href="/static/teacherPanel/css/questions.css" />
 		<link
 			rel="stylesheet"
 			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
 		/>
 		<script src="/static/teacherPanel/script.js" defer></script>
+		<script src="/static/teacherPanel/js/questions.js" defer></script>
 	</head>
 	<body>
 		<header class="navbar">
@@ -25,6 +26,7 @@
 				<a href="/static/teacherPanel/html/questions.html" class="active"
 					>Вопросы</a
 				>
+				<a href="/static/teacherPanel/html/theory.html">Теория</a>
 				<a href="/static/teacherPanel/html/groups.html">Мои группы</a>
 			</nav>
 			<div class="actions">
@@ -37,6 +39,20 @@
 
 		<main class="page-content">
 			<h1>Управление вопросами</h1>
+
+			<div class="search-wrapper">
+				<input
+					id="teacher-question-search"
+					type="text"
+					placeholder="Поиск вопроса…"
+					aria-autocomplete="list"
+					aria-controls="teacher-question-suggestions"
+				/>
+				<button class="clear-search" aria-label="Очистить поиск">
+					&times;
+				</button>
+				<ul id="teacher-question-suggestions" role="listbox"></ul>
+			</div>
 
 			<form id="newQuestionForm" class="course-form">
 				<select name="test_id" id="testSelect" required>
@@ -77,6 +93,7 @@
 							<th>Тип</th>
 							<th>Несколько</th>
 							<th>Тест ID</th>
+							<th>Сложность</th>
 							<th>Дата создания</th>
 							<th>Ответ / Варианты</th>
 							<th>Действия</th>

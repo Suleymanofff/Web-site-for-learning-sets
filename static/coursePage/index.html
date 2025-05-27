@@ -49,5 +49,28 @@
 				<div class="cards-list" id="tests-list">Загрузка тестов...</div>
 			</section>
 		</main>
+
+		<!-- Начало попытки -->
+		<div id="startAttemptModal" class="modal-overlay" style="display: none">
+			<div class="modal-content">
+				<h3 id="startAttemptTitle">У вас есть X попытки</h3>
+				<div class="modal-footer">
+					<button id="btnStartAttempt">Начать</button>
+					<button id="btnCancelStart">Отмена</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Результат попытки -->
+		<div id="finishAttemptModal" class="modal-overlay" style="display: none">
+			<div class="modal-content">
+				<h3 id="finishAttemptTitle">Вы набрали N баллов</h3>
+				<p id="finishAttemptMsg"></p>
+				<div class="modal-footer">
+					<button id="btnConfirmFinish">Завершить</button>
+					<button id="btnRetryAttempt">Пройти заново</button>
+				</div>
+			</div>
+		</div>
 	</body>
 </html>

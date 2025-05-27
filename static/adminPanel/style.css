@@ -114,7 +114,7 @@ body {
 
 /* === PAGE CONTENT === */
 .page-content {
-	max-width: 1200px;
+	max-width: 1400px;
 	margin: var(--sp-lg) auto;
 	padding: 0 var(--sp-md);
 }
@@ -244,7 +244,7 @@ body {
 }
 
 /* === EDITABLE FIELDS === */
-input.edit-title,
+input.edit-text,
 input.edit-desc,
 input.edit-teacher {
 	width: 100%;
@@ -255,7 +255,7 @@ input.edit-teacher {
 	color: var(--text);
 	transition: border-color var(--trans);
 }
-input.edit-title:focus,
+input.edit-text:focus,
 input.edit-desc:focus,
 input.edit-teacher:focus {
 	outline: none;
@@ -278,37 +278,39 @@ input.edit-teacher:focus {
 	font-size: 14px;
 }
 
-button.save-btn,
 button.save-course,
-button.save-btn {
-	background: var(--primary);
-	color: var(--bg);
-	border: none;
+button.save-btn,
+.table-wrapper button.save-group {
+	background: transparent;
+	color: green;
+	border: 2px solid green;
 	padding: var(--sp-xs) var(--sp-sm);
 	border-radius: var(--radius);
 	cursor: pointer;
 	transition: opacity var(--trans);
-	margin-right: var(--sp-xs);
 }
 button.save-btn:hover,
-button.save-course:hover {
-	opacity: 0.8;
+button.save-course:hover,
+.table-wrapper button.save-group:hover {
+	background-color: green;
+	color: white;
 }
 button.del-btn,
-button.del-course {
+button.del-course,
+.table-wrapper button.del-group {
 	background: transparent;
-	border: 1px solid var(--text-muted);
-	color: var(--text-muted);
+	border: 2px solid rgb(173, 4, 4);
+	color: rgb(173, 4, 4);
 	padding: var(--sp-xs) var(--sp-sm);
 	border-radius: var(--radius);
 	cursor: pointer;
 	transition: opacity var(--trans);
 }
 button.del-btn:hover,
-button.del-course:hover {
-	opacity: 0.8;
-	background: var(--text-muted);
-	color: var(--bg);
+button.del-course:hover,
+.table-wrapper button.del-group:hover {
+	background-color: rgb(173, 4, 4);
+	color: white;
 }
 
 /* === SELECT (roles) === */
@@ -419,24 +421,6 @@ button.del-course:hover {
 	border-color: var(--primary);
 }
 
-.table-wrapper button.save-group,
-.table-wrapper button.del-group {
-	background: none;
-	border: none;
-	cursor: pointer;
-	font-size: 1.1rem;
-	padding: var(--sp-xs);
-	transition: color var(--trans);
-}
-
-.table-wrapper button.save-group:hover {
-	color: #28a745; /* зеленый при сохранении */
-}
-
-.table-wrapper button.del-group:hover {
-	color: #dc3545; /* красный при удалении */
-}
-
 /* Если нужно, добавить отступы для иконок */
 .table-wrapper button i {
 	pointer-events: none;
@@ -457,17 +441,118 @@ button {
 	color: var(--bg);
 }
 
-/* Для кнопок внутри таблицы */
-.table-wrapper button.save-group {
-	color: var(--text); /* зелёный контур */
-}
-
-.table-wrapper button.del-group {
-	color: var(--text); /* красный контур */
-}
-
 /* Hover: слегка заливать фоном */
 button:hover {
 	background: opacity(0.8);
 	color: #fff;
+}
+
+.search-wrapper {
+	position: relative;
+	max-width: 600px;
+	margin: 1rem auto;
+}
+
+#admin-user-search,
+#admin-group-search {
+	width: 100%;
+	padding: 0.5rem 1rem;
+	border: 2px solid var(--primary);
+	border-radius: var(--radius);
+	outline: none;
+}
+
+.clear-search {
+	position: absolute;
+	top: 50%;
+	right: 0.75rem;
+	transform: translateY(-50%);
+	background: transparent;
+	border: none;
+	font-size: 1.25rem;
+	cursor: pointer;
+	color: #666;
+	display: none;
+}
+
+#admin-user-suggestions,
+#admin-group-suggestions {
+	position: absolute;
+	top: calc(100% + 2px);
+	left: 0;
+	right: 0;
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-top: none;
+	max-height: 200px;
+	overflow-y: auto;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+	z-index: 10;
+}
+
+#admin-user-suggestions li,
+#admin-group-suggestions li {
+	padding: 0.5rem 1rem;
+	cursor: pointer;
+}
+
+#admin-user-suggestions li:hover,
+#admin-user-suggestions li.active,
+#admin-group-suggestions li:hover,
+#admin-group-suggestions li.active {
+	background: rgba(79, 70, 229, 0.1);
+}
+
+#admin-user-suggestions li mark,
+#admin-group-suggestions li mark {
+	background-color: yellow;
+	padding: 0;
+	border-radius: 2px;
+}
+
+#admin-course-search,
+#admin-group-search {
+	width: 100%;
+	padding: 0.5rem 1rem;
+	border: 2px solid var(--primary);
+	border-radius: var(--radius);
+	outline: none;
+}
+
+#admin-course-suggestions,
+#admin-group-suggestions {
+	position: absolute;
+	top: calc(100% + 2px);
+	left: 0;
+	right: 0;
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-top: none;
+	max-height: 200px;
+	overflow-y: auto;
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+	z-index: 10;
+}
+#admin-course-suggestions li,
+#admin-group-suggestions li {
+	padding: 0.5rem 1rem;
+	cursor: pointer;
+}
+#admin-course-suggestions li:hover,
+#admin-course-suggestions li.active,
+#admin-group-suggestions li:hover,
+#admin-group-suggestions li.active {
+	background: rgba(79, 70, 229, 0.1);
+}
+#admin-course-suggestions li mark,
+#admin-group-suggestions li mark {
+	background-color: yellow;
+	padding: 0;
+	border-radius: 2px;
 }

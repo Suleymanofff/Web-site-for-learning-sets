@@ -7,13 +7,13 @@
 		<script src="/static/js/theme-init.js"></script>
 		<link rel="stylesheet" href="/static/teacherPanel/style.css" />
 		<link rel="stylesheet" href="/static/teacherPanel/css/common.css" />
-		<!-- <link rel="stylesheet" href="/static/teacherPanel/css/tests.css" /> -->
+		<link rel="stylesheet" href="/static/teacherPanel/css/tests.css" />
 		<link
 			rel="stylesheet"
 			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
 		/>
 		<script src="/static/teacherPanel/script.js" defer></script>
-		<!-- <script src="/static/teacherPanel/js/tests.js" defer></script> -->
+		<script src="/static/teacherPanel/js/tests.js" defer></script>
 	</head>
 	<body>
 		<header class="navbar">
@@ -24,6 +24,7 @@
 				<a href="/static/teacherPanel/html/courses.html">Курсы</a>
 				<a href="/static/teacherPanel/html/tests.html" class="active">Тесты</a>
 				<a href="/static/teacherPanel/html/questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/theory.html">Теория</a>
 				<a href="/static/teacherPanel/html/groups.html">Мои группы</a>
 			</nav>
 			<div class="actions">
@@ -36,6 +37,20 @@
 
 		<main class="page-content">
 			<h1>Управление тестами</h1>
+
+			<div class="search-wrapper">
+				<input
+					id="teacher-test-search"
+					type="text"
+					placeholder="Поиск теста…"
+					aria-autocomplete="list"
+					aria-controls="teacher-test-suggestions"
+				/>
+				<button class="clear-search" aria-label="Очистить поиск">
+					&times;
+				</button>
+				<ul id="teacher-test-suggestions" role="listbox"></ul>
+			</div>
 
 			<form id="newTestForm" class="course-form">
 				<select name="course_id" required>

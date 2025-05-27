@@ -1,235 +1,186 @@
-// ——— State и функции для модалки быстрых вопросов ———
-let quickIsDirty = false
+// static/teacherPanel/js/tests.js
+// Поиск тестов с подсветкой подстроки в подсказках
 
-function openQuestionModal(testId) {
-	document.getElementById('quickTestId').value = testId
-	document.getElementById('questionModal').style.display = 'flex'
-	quickIsDirty = false
-	document.getElementById('saveQuickQuestions').disabled = true
-	clearQuickModal()
-}
-
-function clearQuickModal() {
-	document.getElementById('quickQuestionsList').innerHTML = ''
-	document.getElementById('quickQuestionForm').reset()
-	document.getElementById('quick_correct_answer').style.display = 'none'
-}
-
-function tryCloseModal() {
-	if (quickIsDirty) {
-		document.getElementById('unsavedConfirm').style.display = 'block'
-	} else {
-		forceCloseModal()
+function debounce(fn, ms = 300) {
+	let timer
+	return (...args) => {
+		clearTimeout(timer)
+		timer = setTimeout(() => fn(...args), ms)
 	}
 }
 
-function forceCloseModal() {
-	document.getElementById('questionModal').style.display = 'none'
-	document.getElementById('unsavedConfirm').style.display = 'none'
-	clearQuickModal()
-	location.reload()
-}
+function initTeacherTestSearch() {
+	const input = document.getElementById('teacher-test-search')
+	const sugg = document.getElementById('teacher-test-suggestions')
+	const wrapper = document.querySelector('.search-wrapper')
+	const clearBtn =
+		wrapper.querySelector('.clear-search') ||
+		(() => {
+			const btn = document.createElement('button')
+			btn.className = 'clear-search'
+			btn.setAttribute('aria-label', 'Очистить поиск')
+			btn.innerHTML = '&times;'
+			wrapper.appendChild(btn)
+			return btn
+		})()
 
-function cancelClose() {
-	document.getElementById('unsavedConfirm').style.display = 'none'
-}
+	const tbody = document.getElementById('testsBody')
+	const rows = Array.from(tbody.querySelectorAll('tr'))
+	let currentIndex = -1
 
-async function saveQuickQuestions() {
-	const testId = +document.getElementById('quickTestId').value
-	const items = document.querySelectorAll('#quickQuestionsList .question-item')
+	clearBtn.style.display = 'none'
 
-	for (let li of items) {
-		// Сохраняем сам вопрос
-		const qRes = await fetch('/api/teacher/questions', {
-			method: 'POST',
-			credentials: 'include',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				test_id: testId,
-				question_text: li.querySelector('.question-text')?.textContent ?? '',
-				question_type: li.dataset.type,
-				multiple_choice: li.dataset.multi === 'true',
-				correct_answer_text:
-					li.dataset.type === 'open' ? li.dataset.correct : null,
-			}),
-		})
+	function clearSearch() {
+		input.value = ''
+		rows.forEach(r => (r.style.display = 'table-row'))
+		sugg.innerHTML = ''
+		wrapper.setAttribute('aria-expanded', 'false')
+		clearBtn.style.display = 'none'
+		currentIndex = -1
+	}
 
-		if (!qRes.ok) throw new Error('Не удалось сохранить вопрос')
+	function getRowData(row) {
+		// Для тестов мы тоже считаем, что первые два столбца — это <input class="edit-text">
+		const inputs = row.querySelectorAll('input.edit-text')
+		const title =
+			inputs[0]?.value.trim().toLowerCase() ||
+			row.cells[0].innerText.trim().toLowerCase()
+		const description =
+			inputs[1]?.value.trim().toLowerCase() ||
+			row.cells[1].innerText.trim().toLowerCase()
+		return { title, description }
+	}
 
-		const { id: questionId } = await qRes.json()
-
-		// Сохраняем варианты
-		if (li.dataset.type === 'closed') {
-			const opts = li.querySelectorAll('li.option-item')
-			for (let opt of opts) {
-				const textEl = opt.querySelector('.option-text')
-				if (!textEl) continue
-
-				const isCorrect = opt.dataset.correct === 'true'
-
-				await fetch('/api/teacher/options', {
-					method: 'POST',
-					credentials: 'include',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						question_id: questionId,
-						option_text: textEl.textContent.trim(),
-						is_correct: isCorrect,
-					}),
-				})
+	function isFuzzy(text, q) {
+		let idx = 0
+		for (const ch of text) {
+			if (ch === q[idx]) {
+				idx++
+				if (idx === q.length) return true
 			}
 		}
+		return false
 	}
 
-	quickIsDirty = false
-	document.getElementById('saveQuickQuestions').disabled = true
-	forceCloseModal()
-}
+	function filterRows(q) {
+		const query = q.trim().toLowerCase()
+		if (!query) return rows
 
-function renumberQuestions() {
-	document
-		.querySelectorAll('#quickQuestionsList .question-item')
-		.forEach((li, idx) => {
-			const num = li.querySelector('.question-number')
-			if (num) num.textContent = `${idx + 1}.`
-		})
-}
+		// точное совпадение по названию
+		let matches = rows.filter(r => getRowData(r).title === query)
+		if (matches.length) return matches
 
-// -----------------------
-// loadOptions
-// -----------------------
-async function loadOptions(questionId) {
-	const tbodyOpts = document.getElementById(`opts-${questionId}`)
-	if (!tbodyOpts) return
-	tbodyOpts.innerHTML = ''
-	try {
-		const res = await fetch(`/api/teacher/options?question_id=${questionId}`, {
-			credentials: 'include',
+		// подстрока
+		matches = rows.filter(r => {
+			const d = getRowData(r)
+			return d.title.includes(query) || d.description.includes(query)
 		})
-		if (!res.ok) throw ''
-		const opts = await res.json()
-		opts.forEach(o => {
-			const tr = document.createElement('tr')
-			tr.innerHTML = `
-        <td><input class="edit-opt-text" data-id="${o.id}" value="${
-				o.option_text
-			}"></td>
-        <td><input type="checkbox" class="edit-opt-correct" data-id="${o.id}"${
-				o.is_correct ? ' checked' : ''
-			}></td>
-        <td>
-          <button class="save-option" data-id="${
-						o.id
-					}"><i class="fas fa-save"></i></button>
-          <button class="del-option" data-id="${
-						o.id
-					}"><i class="fas fa-trash"></i></button>
-        </td>`
-			tbodyOpts.appendChild(tr)
+		if (matches.length) return matches
+
+		// нечеткий поиск
+		return rows.filter(r => {
+			const d = getRowData(r)
+			return isFuzzy(d.title + ' ' + d.description, query)
 		})
-	} catch {
-		console.error('Ошибка загрузки вариантов')
 	}
-}
 
-async function loadQuestions(testId) {
-	const tbody = document.getElementById('questionsBody')
-	tbody.innerHTML = ''
-	if (!testId) return
-	try {
-		const res = await fetch(`/api/teacher/questions?test_id=${testId}`, {
-			credentials: 'include',
-		})
-		if (!res.ok) throw ''
-		const qs = await res.json()
-		qs.forEach(q => {
-			// Основная строка
-			const tr = document.createElement('tr')
-			tr.innerHTML = `
-        <td><input class="edit-text" data-id="${q.id}" value="${
-				q.question_text
-			}"></td>
-        <td>
-          <select class="edit-type" data-id="${q.id}">
-            <option value="open"${
-							q.question_type === 'open' ? ' selected' : ''
-						}>Открытый</option>
-            <option value="closed"${
-							q.question_type === 'closed' ? ' selected' : ''
-						}>Закрытый</option>
-          </select>
-        </td>
-        <td>
-  <input type="checkbox" class="edit-multi ${
-		q.question_type === 'open' ? 'checkbox-disabled' : ''
-	}" 
-         data-id="${q.id}" 
-         ${q.multiple_choice ? 'checked' : ''} 
-         ${q.question_type === 'open' ? 'disabled' : ''}>
-</td>
-
-        <td>${q.test_id}</td>
-        <td>${new Date(q.created_at).toLocaleDateString()}</td>
-        <td>
-          <button class="manage-options"
-                  data-id="${q.id}"
-                  data-type="${q.question_type}">
-            <i class="fas fa-list"></i> Варианты
-          </button>
-        </td>
-        <td class="action-cell">
-          <button class="save-question" data-id="${
-						q.id
-					}"><i class="fas fa-save"></i> Сохранить</button>
-          <button class="del-question"  data-id="${
-						q.id
-					}"><i class="fas fa-trash"></i> Удалить</button>
-        </td>`
-			tbody.appendChild(tr)
-
-			// Скрытая строка
-			const trOpts = document.createElement('tr')
-			trOpts.className = 'options-row'
-			trOpts.dataset.qid = q.id
-			trOpts.dataset.type = q.question_type
-			trOpts.style.display = 'none'
-
-			if (q.question_type === 'closed') {
-				trOpts.innerHTML = `
-          <td colspan="7">
-            <div class="options-wrapper" style="min-height:100px; padding:10px;">
-              <table class="options-table">
-                <thead><tr><th>Вариант</th><th>Правильный?</th><th>Действия</th></tr></thead>
-                <tbody id="opts-${q.id}"></tbody>
-              </table>
-              <div class="option-form">
-                <input type="text" class="new-opt-text" placeholder="Новый вариант">
-                <input type="checkbox" class="new-opt-correct">
-                <button class="save-new-option" data-id="${q.id}"><i class="fas fa-plus"></i></button>
-              </div>
-            </div>
-          </td>`
-			} else {
-				trOpts.innerHTML = `
-          <td colspan="7">
-      <div class="options-wrapper">
-        <div class="open-answer-wrapper">
-          <label>Правильный ответ:</label>
-          <input type="text" class="open-answer-input" value="${
-						q.correct_answer_text || ''
-					}" />
-              <button class="save-open-answer" data-id="${
-								q.id
-							}">Сохранить</button>
-              <button class="delete-open-answer" data-id="${
-								q.id
-							}">Удалить</button>
-            </div>
-          </td>`
-			}
-			tbody.appendChild(trOpts)
-		})
-	} catch {
-		console.error('Ошибка загрузки вопросов')
+	function highlightText(text, query) {
+		const lower = text.toLowerCase()
+		const idx = lower.indexOf(query)
+		if (idx === -1) return text
+		const before = text.slice(0, idx)
+		const match = text.slice(idx, idx + query.length)
+		const after = text.slice(idx + query.length)
+		return `${before}<mark>${match}</mark>${after}`
 	}
+
+	function updateSuggestions(q) {
+		sugg.innerHTML = ''
+		currentIndex = -1
+		const results = filterRows(q)
+		if (!q) {
+			wrapper.setAttribute('aria-expanded', 'false')
+			clearBtn.style.display = 'none'
+			rows.forEach(r => (r.style.display = 'table-row'))
+			return
+		}
+		clearBtn.style.display = 'block'
+		wrapper.setAttribute('aria-expanded', 'true')
+
+		results.slice(0, 10).forEach((row, idx) => {
+			// Берём исходный заголовок из input или из ячейки
+			const rawText =
+				row.querySelector('input.edit-text')?.value || row.cells[0].innerText
+			const highlighted = highlightText(rawText, q.toLowerCase())
+			const li = document.createElement('li')
+			li.id = `test-sugg-${idx}`
+			li.role = 'option'
+			li.innerHTML = highlighted
+			li.addEventListener('click', () => selectSuggestion(idx, results))
+			sugg.appendChild(li)
+		})
+	}
+
+	function renderResults(results) {
+		rows.forEach(r => (r.style.display = 'none'))
+		results.forEach(r => (r.style.display = 'table-row'))
+	}
+
+	function highlightItem(items, idx) {
+		items.forEach((li, i) => li.classList.toggle('active', i === idx))
+		if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' })
+	}
+
+	function selectSuggestion(idx, results) {
+		const row = results[idx]
+		const title =
+			row.querySelector('input.edit-text')?.value || row.cells[0].innerText
+		input.value = title
+		renderResults(results)
+		sugg.innerHTML = ''
+		wrapper.setAttribute('aria-expanded', 'false')
+		clearBtn.style.display = 'block'
+		currentIndex = -1
+	}
+
+	const debouncedUpdate = debounce(e => updateSuggestions(e.target.value))
+	input.addEventListener('input', debouncedUpdate)
+
+	input.addEventListener('keydown', e => {
+		const items = Array.from(sugg.children)
+		if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key))
+			e.preventDefault()
+
+		if (e.key === 'ArrowDown' && items.length) {
+			currentIndex = (currentIndex + 1) % items.length
+			highlightItem(items, currentIndex)
+		} else if (e.key === 'ArrowUp' && items.length) {
+			currentIndex = (currentIndex - 1 + items.length) % items.length
+			highlightItem(items, currentIndex)
+		} else if (e.key === 'Enter') {
+			const res = filterRows(input.value)
+			if (currentIndex > -1 && items.length) selectSuggestion(currentIndex, res)
+			else renderResults(res)
+			sugg.innerHTML = ''
+			wrapper.setAttribute('aria-expanded', 'false')
+		} else if (e.key === 'Escape') {
+			clearSearch()
+		}
+	})
+
+	clearBtn.addEventListener('click', clearSearch)
+	document.addEventListener('click', e => {
+		if (!wrapper.contains(e.target)) {
+			sugg.innerHTML = ''
+			wrapper.setAttribute('aria-expanded', 'false')
+			currentIndex = -1
+		}
+	})
 }
+
+// Ждём события после загрузки и отрисовки тестов в script.js
+document.addEventListener('teacherTests:loaded', () => {
+	if (document.getElementById('teacher-test-search')) {
+		initTeacherTestSearch()
+	}
+})

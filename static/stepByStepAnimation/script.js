@@ -84,4 +84,118 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (teacherTile) teacherTile.style.display = 'flex'
 		}
 	})
+
+	const steps = Array.from(document.querySelectorAll('.step'))
+	let current = 0
+	const total = steps.length
+
+	document.getElementById('totalSteps').textContent = total
+	updateView()
+
+	document.getElementById('prevStep').onclick = () => {
+		if (current > 0) current--
+		updateView()
+	}
+	document.getElementById('nextStep').onclick = () => {
+		if (current < total - 1) current++
+		updateView()
+	}
+
+	function updateView() {
+		steps.forEach((sec, i) => {
+			sec.style.display = i === current ? 'block' : 'none'
+		})
+		document.getElementById('currentStep').textContent = current + 1
+		runAnimationForStep(current + 1)
+		updateCalculatorResult(current + 1)
+	}
 })
+
+function runAnimationForStep(step) {
+	const sel = `.step[data-step="${step}"] `
+	switch (step) {
+		case 1:
+			gsap.fromTo(
+				sel + '.set',
+				{ scale: 0, opacity: 0 },
+				{ scale: 1, opacity: 0.9, duration: 0.8, stagger: 0.2 }
+			)
+			break
+		case 2:
+			gsap.fromTo(
+				sel + '.highlight',
+				{ scale: 0, opacity: 0 },
+				{ scale: 1, opacity: 1, duration: 0.6, stagger: 0.3 }
+			)
+			break
+		case 3:
+			gsap.fromTo(
+				sel + '.label.union-all',
+				{ scale: 0, opacity: 0 },
+				{ scale: 1, opacity: 1, duration: 0.7 }
+			)
+			break
+		case 4:
+			gsap.fromTo(
+				sel + '.highlight',
+				{ scale: 0, opacity: 0 },
+				{ scale: 1, opacity: 1, duration: 0.6, stagger: 0.2 }
+			)
+			break
+		case 5:
+			gsap.fromTo(
+				sel + '.label.ab-c-union',
+				{ scale: 0, opacity: 0 },
+				{ scale: 1, opacity: 1, duration: 0.7 }
+			)
+			break
+		case 6:
+			gsap.fromTo(sel + '.result', { opacity: 0 }, { opacity: 1, duration: 1 })
+			break
+	}
+}
+
+function updateCalculatorResult(step) {
+	const parseSet = id => {
+		const raw = document.getElementById(id).value
+		return new Set(
+			raw
+				.split(',')
+				.map(s => s.trim())
+				.filter(Boolean)
+				.map(Number)
+		)
+	}
+
+	const setA = parseSet('setA')
+	const setB = parseSet('setB')
+	const setC = parseSet('setC')
+
+	const union = (a, b) => new Set([...a, ...b])
+
+	let resultSet
+
+	switch (step) {
+		case 2:
+			resultSet = union(setB, setC)
+			break
+		case 3:
+			resultSet = union(setA, union(setB, setC))
+			break
+		case 4:
+			resultSet = union(setA, setB)
+			break
+		case 5:
+			resultSet = union(union(setA, setB), setC)
+			break
+		case 6:
+			resultSet = union(setA, union(setB, setC)) // или union(union(A, B), C)
+			break
+		default:
+			resultSet = new Set()
+	}
+
+	document.querySelector('#calc-result code').textContent = `{ ${[...resultSet]
+		.sort((a, b) => a - b)
+		.join(', ')} }`
+}

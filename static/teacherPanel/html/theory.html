@@ -55,6 +55,20 @@
 		<main class="page-content">
 			<h1 id="page-title">Управление теорией</h1>
 
+			<div class="search-wrapper">
+				<input
+					id="teacher-theory-search"
+					type="text"
+					placeholder="Поиск темы…"
+					aria-autocomplete="list"
+					aria-controls="teacher-theory-suggestions"
+				/>
+				<button class="clear-search" aria-label="Очистить поиск">
+					&times;
+				</button>
+				<ul id="teacher-theory-suggestions" role="listbox"></ul>
+			</div>
+
 			<!-- Loading overlay и спиннер -->
 			<div id="loading-overlay" class="hidden">
 				<div class="spinner"></div>

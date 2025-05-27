@@ -1,7 +1,7 @@
 {
 	"scripts": {
 		"start:front": "node server.js",
-		"start:api": "go run main.go middleware.go handlers.go structures.go",
+		"start:api": "go run main.go middleware.go handlers.go structures.go difficulty.go",
 		"start": "concurrently \"npm run start:front\" \"npm run start:api\""
 	},
 	"devDependencies": {

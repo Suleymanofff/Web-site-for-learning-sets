@@ -67,17 +67,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 		// Выводим теорию
 		document.getElementById('title').textContent = data.title
 		document.getElementById('content').innerHTML = data.content
-
-		// Проверяем наличие тестов
-		const qBtn = document.getElementById('go-to-questions')
-		if (data.tests && data.tests.length > 0) {
-			qBtn.style.display = 'inline-block'
-			qBtn.addEventListener('click', () => {
-				window.location.href = `/static/questions/?test=${data.tests[0].id}`
-			})
-		} else {
-			qBtn.style.display = 'none'
-		}
 	} catch (err) {
 		console.error(err)
 		document.getElementById('content').textContent = 'Ошибка загрузки теории.'

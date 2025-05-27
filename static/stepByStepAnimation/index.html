@@ -3,17 +3,18 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Пошаговая анимация — Set Learn</title>
+		<title>Пошаговая анимация: ассоциативность объединения</title>
 
 		<!-- 1. Сначала — инициализация темы -->
 		<script src="/static/js/theme-init.js"></script>
 
-		<!-- Общие стили и скрипт с поддержкой светлой/тёмной темы -->
+		<!-- GSAP -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
 		<link rel="stylesheet" href="style.css" />
 		<script src="script.js" defer></script>
 	</head>
 	<body>
-		<!-- Навигация -->
 		<header class="navbar">
 			<div class="logo" onclick="navigate('/static/mainPage/')">Set Learn</div>
 			<nav class="nav-links">
@@ -37,23 +38,98 @@
 				>
 			</nav>
 			<div class="actions">
-				<!-- Тогглер темы -->
-				<button id="theme-toggle" aria-label="Переключить тему">
-					<img src="/static/img/dark-theme.png" alt="dark-theme-toggle" />
-				</button>
-				<!-- Иконка пользователя -->
+				<button id="theme-toggle" aria-label="Переключить тему"></button>
 				<div class="user-icon" onclick="navigate('/profile')">
 					<img src="/static/img/userDefault.png" alt="userDefaultImg" />
 				</div>
 			</div>
 		</header>
 
-		<!-- Контент анимации -->
 		<main class="page-content">
-			<h1>Пошаговая анимация</h1>
-			<!-- Здесь разместите свой контейнер для анимации -->
 			<div id="animation-container">
-				<!-- Ваша интерактивная анимация -->
+				<!-- Шаг 1 -->
+				<section class="step" data-step="1">
+					<h2>Шаг 1: Множества A, B и C</h2>
+					<div class="venn">
+						<div class="set a">A</div>
+						<div class="set b">B</div>
+						<div class="set c">C</div>
+					</div>
+				</section>
+
+				<!-- Шаг 2 -->
+				<section class="step" data-step="2">
+					<h2>Шаг 2: B ∪ C</h2>
+					<div class="venn">
+						<div class="set a faded">A</div>
+						<div class="set b highlight">B</div>
+						<div class="set c highlight">C</div>
+						<!-- <div class="label bc-union">B ∪ C</div> -->
+					</div>
+				</section>
+
+				<!-- Шаг 3 -->
+				<section class="step" data-step="3">
+					<h2>Шаг 3: A ∪ (B ∪ C)</h2>
+					<div class="venn">
+						<div class="set a highlight">A</div>
+						<div class="set b highlight">B</div>
+						<div class="set c highlight">C</div>
+					</div>
+				</section>
+
+				<!-- Шаг 4 -->
+				<section class="step" data-step="4">
+					<h2>Шаг 4: A ∪ B</h2>
+					<div class="venn">
+						<div class="set a highlight">A</div>
+						<div class="set b highlight">B</div>
+						<div class="set c faded">C</div>
+					</div>
+				</section>
+
+				<!-- Шаг 5 -->
+				<section class="step" data-step="5">
+					<h2>Шаг 5: (A ∪ B) ∪ C</h2>
+					<div class="venn">
+						<div class="set a highlight">A</div>
+						<div class="set b highlight">B</div>
+						<div class="set c highlight">C</div>
+					</div>
+				</section>
+
+				<!-- Шаг 6 -->
+				<section class="step" data-step="6">
+					<h2>Шаг 6: Результат</h2>
+					<div class="venn">
+						<div class="set a highlight">A</div>
+						<div class="set b highlight">B</div>
+						<div class="set c highlight">C</div>
+					</div>
+					<p class="result">A ∪ (B ∪ C) = (A ∪ B) ∪ C</p>
+				</section>
+			</div>
+
+			<div id="set-calculator">
+				<h3>Калькулятор множеств</h3>
+				<div class="inputs">
+					<label
+						>A: <input type="text" id="setA" placeholder="1, 2, 3"
+					/></label>
+					<label
+						>B: <input type="text" id="setB" placeholder="2, 3, 4"
+					/></label>
+					<label
+						>C: <input type="text" id="setC" placeholder="3, 4, 5"
+					/></label>
+				</div>
+				<div id="calc-result">Результат шага: <code>{ }</code></div>
+			</div>
+
+			<div class="controls">
+				<button id="prevStep">← Назад</button>
+				<span id="currentStep">1</span> / <span id="totalSteps">6</span>
+				<button id="nextStep">Вперед →</button>
 			</div>
 		</main>
 	</body>

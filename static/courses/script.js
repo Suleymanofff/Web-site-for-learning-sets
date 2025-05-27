@@ -52,22 +52,6 @@ function updateToggleIcon(theme) {
 	btn.appendChild(icon)
 }
 
-/* -----------------------
-	Утилита поиска
------------------------- */
-// function filterCourses(courses, query) {
-// 	const q = query.trim().toLowerCase()
-// 	if (!q) return []
-
-// 	return courses.filter(course => {
-// 		const title = course.title.toLowerCase()
-// 		const desc = (course.description || '').toLowerCase()
-// 		const tagsText = (course.tags || []).join(' ').toLowerCase()
-
-// 		return title.includes(q) || desc.includes(q) || tagsText.includes(q)
-// 	})
-// }
-
 function filterCourses(courses, query) {
 	const q = query.trim().toLowerCase()
 	if (!q) return []

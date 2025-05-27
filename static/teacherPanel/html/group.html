@@ -23,6 +23,7 @@
 				<a href="/static/teacherPanel/html/courses.html">Курсы</a>
 				<a href="/static/teacherPanel/html/tests.html">Тесты</a>
 				<a href="/static/teacherPanel/html/questions.html">Вопросы</a>
+				<a href="/static/teacherPanel/html/theory.html">Теория</a>
 				<a href="/static/teacherPanel/html/groups.html">Мои группы</a>
 				<a href="/static/teacherPanel/html/group.html" class="active">Группа</a>
 			</nav>
@@ -45,6 +46,21 @@
 				/>
 				<button id="saveNameBtn"><i class="fas fa-check"></i> Сохранить</button>
 			</h1>
+
+			<div class="search-wrapper">
+				<input
+					id="teacher-group-search"
+					type="text"
+					placeholder="Поиск студента…"
+					aria-autocomplete="list"
+					aria-controls="teacher-group-suggestions"
+				/>
+				<button class="clear-search" aria-label="Очистить поиск">
+					&times;
+				</button>
+				<ul id="teacher-group-suggestions" role="listbox"></ul>
+			</div>
+
 			<h3>Добавить студента</h3>
 			<form id="addStudentForm">
 				<input

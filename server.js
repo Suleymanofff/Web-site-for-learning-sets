@@ -20,6 +20,7 @@ app.use(
 			'/logout',
 			'/profile',
 			'/api/*',
+			'/predict',
 		],
 	})
 )

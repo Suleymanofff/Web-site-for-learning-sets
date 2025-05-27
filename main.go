@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
@@ -11,6 +14,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/robfig/cron/v3"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -30,6 +34,32 @@ var (
 	mainPagePath    = "./static/mainPage"
 	profilePath     = "./static/profile"
 )
+
+// predictDifficulty запрашивает сложность вопроса у ML-сервиса.
+func predictDifficulty(text string) (string, error) {
+	payload, _ := json.Marshal(map[string]string{"question_text": text})
+	resp, err := http.Post("http://localhost:5000/predict",
+		"application/json",
+		bytes.NewBuffer(payload),
+	)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	var out struct {
+		Difficulty string `json:"difficulty"`
+		Error      string `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return "", err
+	}
+	if out.Error != "" {
+		return "", fmt.Errorf("ml error: %s", out.Error)
+	}
+	return out.Difficulty, nil
+}
 
 func main() {
 	// Подключаемся к БД
@@ -73,6 +103,12 @@ func main() {
 	apiMux.HandleFunc("/api/profile", profileAPIHandler)
 	apiMux.HandleFunc("/api/upload-avatar", uploadAvatarHandler)
 	apiMux.HandleFunc("/api/remove-avatar", removeAvatarHandler)
+
+	// POST /api/student/answer — запись одиночного ответа
+	apiMux.Handle(
+		"/api/student/answer",
+		RequireAnyRole([]string{"student", "teacher", "admin"}, http.HandlerFunc(SubmitAnswerHandler)),
+	)
 
 	// === только admin ===
 	apiMux.Handle(
@@ -176,10 +212,10 @@ func main() {
 	))
 
 	// 3) Получение вопросов теста
-	apiMux.Handle(
-		"/api/tests/",
-		RequireAnyRole([]string{"admin", "teacher", "student"}, http.HandlerFunc(GetTestQuestions)),
-	)
+	// apiMux.Handle(
+	// 	"/api/tests/",
+	// 	RequireAnyRole([]string{"admin", "teacher", "student"}, http.HandlerFunc(GetTestQuestions)),
+	// )
 	// 4) Установка открытого ответа
 	apiMux.Handle(
 		"/api/teacher/questions/set_open_answer",
@@ -229,8 +265,94 @@ func main() {
 		}),
 	))
 
+	// === эндпойнты для попыток теста ===
+
+	apiMux.Handle(
+		"/api/tests/",
+		JWTAuthMiddleware(
+			RequireAnyRole([]string{"admin", "teacher", "student"},
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					// Убираем префикс и разбиваем путь
+					path := strings.TrimPrefix(r.URL.Path, "/api/tests/")
+					parts := strings.Split(path, "/")
+
+					switch {
+					// 1) Получение вопросов: GET /api/tests/{testId}/questions
+					case len(parts) == 2 && parts[1] == "questions" && r.Method == http.MethodGet:
+						GetTestQuestions(w, r)
+						return
+
+					// 2) Создание попытки:  POST /api/tests/{testId}/attempts
+					case len(parts) == 2 && parts[1] == "attempts" && r.Method == http.MethodPost:
+						// В логах видно, какой userID делает запрос
+						// fmt.Printf("CreateTestAttempt: user %v, test %d\n", getClaims(r.Context()).UserID, testID)
+						CreateTestAttempt(w, r)
+						return
+
+					// 3) Подсчёт попыток:  GET /api/tests/{testId}/attempts/count
+					case len(parts) == 3 && parts[1] == "attempts" && parts[2] == "count" && r.Method == http.MethodGet:
+						GetAttemptsCount(w, r)
+						return
+
+					// GET /api/tests/{testId}/attempts/latest ===
+					case len(parts) == 3 && parts[1] == "attempts" && parts[2] == "latest" && r.Method == http.MethodGet:
+						GetLatestAttempt(w, r)
+						return
+
+					default:
+						http.NotFound(w, r)
+						return
+					}
+				}),
+			),
+		),
+	)
+
+	// PATCH /api/attempts/{attemptId}/finish
+	apiMux.Handle(
+		"/api/attempts/",
+		JWTAuthMiddleware(
+			RequireAnyRole([]string{"admin", "teacher", "student"},
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					path := strings.TrimPrefix(r.URL.Path, "/api/attempts/")
+					parts := strings.Split(path, "/")
+					if len(parts) == 2 && parts[1] == "finish" && r.Method == http.MethodPatch {
+						FinishTestAttempt(w, r)
+						return
+					}
+					http.NotFound(w, r)
+				}),
+			),
+		),
+	)
+
 	// Вешаем JWT-мидлвэир на все /api/
 	mux.Handle("/api/", JWTAuthMiddleware(apiMux))
+
+	// === ПЛАНИРОВЩИК автоматического пересчёта сложности ===
+	c := cron.New()
+
+	// Запускаем пересчёт каждый день в 3:00 ночи
+	_, err = c.AddFunc("0 3 * * *", func() {
+		log.Println("Автоматический пересчёт сложности вопросов...")
+		if err := RecalcDifficulty(db); err != nil {
+			log.Println("Ошибка при автоматическом пересчёте:", err)
+		} else {
+			log.Println("Пересчёт сложности завершён успешно.")
+		}
+	})
+	if err != nil {
+		log.Fatal("Не удалось запланировать задачу пересчёта:", err)
+	}
+
+	// Запускаем cron-планировщик
+	c.Start()
+	defer c.Stop()
+
+	// запуск этой функции производит мгновенный пересчет сложности всех вопросов из БД
+	// if err := RecalcDifficultyML(db); err != nil {
+	// 	log.Println("Ошибка начального пересчёта сложности:", err)
+	// }
 
 	// Запуск сервера с CORS
 	fmt.Println("Server started on :8080")

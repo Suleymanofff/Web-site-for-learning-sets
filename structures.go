@@ -40,6 +40,7 @@ type Question struct {
 	Text           string    `json:"text"`
 	Type           string    `json:"type"`
 	MultipleChoice bool      `json:"multiple_choice"`
+	Difficulty     string    `json:"difficulty"`
 	CreatedAt      time.Time `json:"created_at"`
 	Options        []Option  `json:"options"`
 }
@@ -85,7 +86,7 @@ type CourseInfo struct {
 	ID          int       `json:"id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
-	TeacherID   int       `json:"teacher_id"`
+	TeacherID   *int      `json:"teacher_id,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 
@@ -104,8 +105,9 @@ type QuestionInfo struct {
 	QuestionText      string         `json:"question_text"`
 	QuestionType      string         `json:"question_type"`
 	MultipleChoice    bool           `json:"multiple_choice"`
-	CreatedAt         time.Time      `json:"created_at"`
 	CorrectAnswerText sql.NullString `json:"-"` // временно скрываем
+	Difficulty        string         `json:"difficulty"`
+	CreatedAt         time.Time      `json:"created_at"`
 	Options           []OptionInfo   `json:"options,omitempty"`
 }
 
@@ -129,6 +131,7 @@ type teacherQuestionRequest struct {
 	QuestionType      string `json:"question_type"`
 	MultipleChoice    bool   `json:"multiple_choice"`
 	CorrectAnswerText string `json:"correct_answer_text"`
+	Difficulty        string `json:"difficulty"`
 }
 
 // GroupDetail включает информацию о группе и её студентах
@@ -153,4 +156,12 @@ type studentGroupPayload struct {
 	StudentID    int    `json:"student_id"`
 	StudentEmail string `json:"student_email"`
 	GroupID      *int   `json:"group_id"`
+}
+
+type UserQuestionAnswer struct {
+	ID         int       `json:"id"`
+	UserID     int       `json:"user_id"`
+	QuestionID int       `json:"question_id"`
+	IsCorrect  bool      `json:"is_correct"`
+	AnsweredAt time.Time `json:"answered_at"`
 }

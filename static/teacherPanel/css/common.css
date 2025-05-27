@@ -110,7 +110,7 @@ body {
 
 /* PAGE CONTENT */
 .page-content {
-	max-width: 1200px;
+	max-width: 1400px;
 	margin: var(--sp-lg) auto;
 	padding: 0 var(--sp-md);
 }
@@ -220,50 +220,72 @@ button.save-open-answer,
 button.view-group-btn,
 button.save-test,
 button.save-question,
+button#saveNameBtn,
 button.save-option,
-button.save-new-option,
-button.manage-options {
-	background: var(--primary);
-	color: var(--bg);
-	border: none;
+.theory-card .save-theory,
+button.save-new-option {
+	background: transparent;
+	color: green;
+	border: 2px solid green;
 	padding: var(--sp-xs) var(--sp-sm);
 	border-radius: var(--radius);
 	cursor: pointer;
 	transition: opacity var(--trans);
-	margin-right: var(--sp-xs);
+	text-align: center;
+	display: inline-block;
 }
 button.save-course:hover,
 button.save-test:hover,
+button.view-group-btn:hover,
 button.save-question:hover,
 button.save-option:hover,
+button#saveNameBtn:hover,
+.theory-card .save-theory:hover,
 button.save-new-option:hover,
 button.manage-options:hover {
-	opacity: 0.8;
+	background-color: green;
+	color: white;
 }
 button.del-course,
 button.del-test,
 button.delete-open-answer,
 button.remove-student-btn,
-button#saveNameBtn,
+.theory-card .btn-danger,
 button.del-question,
 button.del-option {
 	background: transparent;
-	border: 1px solid var(--text-muted);
-	color: var(--text-muted);
+	border: 2px solid rgb(173, 4, 4);
+	color: rgb(173, 4, 4);
 	padding: var(--sp-xs) var(--sp-sm);
 	border-radius: var(--radius);
 	cursor: pointer;
-	transition: background var(--trans), color var(--trans), opacity var(--trans);
+	transition: opacity var(--trans);
+	text-align: center;
+	display: inline-block;
 }
 button.del-course:hover,
 button.del-test:hover,
 button.remove-student-btn:hover,
-button#saveNameBtn:hover,
 button.del-question:hover,
+.theory-card .btn-danger:hover,
 button.del-option:hover {
-	background: var(--text-muted);
+	background-color: rgb(173, 4, 4);
+	color: white;
+}
+
+button.manage-options {
+	background: transparent;
+	color: var(--text);
+	border: 2px solid var(--text);
+	padding: var(--sp-xs) var(--sp-sm);
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: opacity var(--trans);
+}
+
+button.manage-options:hover {
+	background-color: var(--text);
 	color: var(--bg);
-	opacity: 0.8;
 }
 
 /* EDITABLE FIELDS */
@@ -271,7 +293,6 @@ button.del-option:hover {
 #groupNameInput,
 .input-add-student,
 input.edit-text {
-	width: 100%;
 	padding: var(--sp-xs) var(--sp-sm);
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
@@ -397,4 +418,22 @@ button.submit-students-info:hover {
 	100% {
 		transform: rotate(360deg);
 	}
+}
+
+.preview-content {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 300px;
+}
+
+.pdf-icon {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	background: url('/static/img/pdf-icon.svg') no-repeat;
+}
+
+[data-theme='dark'] .pdf-icon {
+	filter: invert(1);
 }

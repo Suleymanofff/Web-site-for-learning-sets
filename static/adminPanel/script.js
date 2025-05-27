@@ -111,35 +111,32 @@ async function initUsers() {
 		const isStudent = u.role === 'student'
 
 		tr.innerHTML = `
-		  <td>${u.email}</td>
-		  <td>${u.full_name}</td>
-		  <td>
-			<select class="role-select" data-id="${u.id}">
-			  <option value="student"${
-					u.role === 'student' ? ' selected' : ''
-				}>student</option>
-			  <option value="teacher"${
-					u.role === 'teacher' ? ' selected' : ''
-				}>teacher</option>
-			  <option value="admin"${u.role === 'admin' ? ' selected' : ''}>admin</option>
-			</select>
-		  </td>
-		  <td>${formatActiveStatus(u.is_active, u.last_login)}</td>
-		  
-		  <td>
-			${
+		<td>${u.email}</td>
+		<td>${u.full_name}</td>
+		<td>
+		  <select class="role-select" data-id="${u.id}">
+			<option value="student"${
+				u.role === 'student' ? ' selected' : ''
+			}>student</option>
+			<option value="teacher"${
+				u.role === 'teacher' ? ' selected' : ''
+			}>teacher</option>
+			<option value="admin"${u.role === 'admin' ? ' selected' : ''}>admin</option>
+		  </select>
+		</td>
+		<td>${formatActiveStatus(u.is_active, u.last_login)}</td>
+		<td>
+		  ${
 				isStudent
-					? `<select class="group-select" data-user-id="${u.id}">
-					 ${groupOptions}
-				   </select>`
+					? `<select class="group-select" data-user-id="${u.id}">${groupOptions}</select>`
 					: `<span class="muted">—</span>`
 			}
-		  </td>
-		  <td class="action-cell">
-			<button class="save-btn" data-id="${u.id}">Сохранить</button>
-			<button class="del-btn"  data-id="${u.id}">Удалить</button>
-		  </td>
-		`
+		</td>
+		<td class="action-cell">
+		  <button class="save-btn" data-id="${u.id}">Сохранить</button>
+		  <button class="del-btn"  data-id="${u.id}">Удалить</button>
+		</td>
+	  `
 		tbody.appendChild(tr)
 
 		// выставляем текущую группу только для студентов
@@ -149,83 +146,84 @@ async function initUsers() {
 		}
 	})
 
-	// 4. Обработка кликов
+	// 4. Сигнализируем модулю поиска, что таблица готова
+	document.dispatchEvent(new CustomEvent('adminUsers:loaded'))
+
+	// 5. Обработка кликов «Сохранить» / «Удалить»
 	tbody.onclick = async e => {
 		const btn = e.target.closest('button')
 		if (!btn) return
-
 		const tr = btn.closest('tr')
 		const id = +btn.dataset.id
 		if (!tr || !id) return
 
-		// 4.1. Сохранить
+		// — Сохранить —
 		if (btn.classList.contains('save-btn')) {
 			const roleSelect = tr.querySelector('select.role-select')
 			const groupSelect = tr.querySelector('select.group-select')
 			const newRole = roleSelect.value
-			const newGroup = groupSelect
-				? groupSelect.value
-					? +groupSelect.value
-					: null
-				: null
-
+			const newGroup =
+				groupSelect && groupSelect.value ? +groupSelect.value : null
 			try {
 				// обновляем роль
-				let r1 = await fetch('/api/admin/users', {
+				const r1 = await fetch('/api/admin/users', {
 					method: 'PUT',
 					credentials: 'include',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ id, role: newRole }),
 				})
 				if (!r1.ok) {
-					let t = await r1.text()
+					const t = await r1.text().catch(() => '')
 					throw new Error(t || 'Не удалось обновить роль')
 				}
-
-				// обновляем группу только если у пользователя есть селект (т.е. он student)
-				if (roleSelect.value === 'student' && groupSelect) {
-					let r2 = await fetch('/api/admin/student-groups', {
+				// обновляем группу для студентов
+				if (newRole === 'student' && groupSelect) {
+					const r2 = await fetch('/api/admin/student-groups', {
 						method: 'PUT',
 						credentials: 'include',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({ student_id: id, group_id: newGroup }),
 					})
 					if (!r2.ok) {
-						let t = await r2.text()
+						const t = await r2.text().catch(() => '')
 						throw new Error(t || 'Не удалось обновить группу')
 					}
-					// сразу выставляем значение селекта
 					groupSelect.value = newGroup != null ? newGroup : ''
 				}
-
 				alert('Данные успешно сохранены')
 			} catch (err) {
 				console.error(err)
 				alert(err.message)
 			}
+			return
 		}
-	}
 
-	// 4.2. Удалить пользователя
-	if (btn.classList.contains('del-btn')) {
-		if (!confirm('Удалить пользователя?')) return
-		try {
-			let res = await fetch('/api/admin/users', {
-				method: 'DELETE',
-				credentials: 'include',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ id }),
-			})
-			if (!res.ok) {
-				let t = await res.text()
-				throw new Error(t || 'Не удалось удалить пользователя')
+		// — Удалить —
+		if (btn.classList.contains('del-btn')) {
+			if (!confirm('Удалить пользователя?')) return
+			try {
+				const res = await fetch('/api/admin/users', {
+					method: 'DELETE',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id }),
+				})
+				if (!res.ok) {
+					const t = await res.text().catch(() => '')
+					throw new Error(t || 'Не удалось удалить пользователя')
+				}
+				tr.remove()
+			} catch (err) {
+				console.error(err)
+				alert('Ошибка удаления: ' + err.message)
 			}
-			tr.remove()
-		} catch (err) {
-			alert('Ошибка: ' + err.message)
 		}
 	}
 }
+
+// Регистрируем поиск один раз, вне initUsers
+// Запуск отрисовки списка
+document.addEventListener('DOMContentLoaded', initUsers)
 
 // -----------------------
 // Управление курсами
@@ -268,22 +266,21 @@ async function initCourses() {
 
 			const tr = document.createElement('tr')
 			tr.innerHTML = `
-				<td><input class="edit-title"    data-id="${c.id}" value="${c.title}"></td>
-				<td><input class="edit-desc"     data-id="${c.id}" value="${
-				c.description
-			}"></td>
-				<td>
-					<select class="edit-teacher" data-id="${c.id}">
-						${teacherOptions}
-					</select>
-				</td>
-				<td>${new Date(c.created_at).toLocaleDateString()}</td>
-				<td class="action-cell">
-					<button class="save-course" data-id="${c.id}">Сохранить</button>
-					<button class="del-course"  data-id="${c.id}">Удалить</button>
-				</td>`
+		  <td><input class="edit-text" data-id="${c.id}" value="${c.title}"></td>
+		  <td><input class="edit-desc" data-id="${c.id}" value="${c.description}"></td>
+		  <td>
+			<select class="edit-teacher" data-id="${c.id}">${teacherOptions}</select>
+		  </td>
+		  <td>${new Date(c.created_at).toLocaleDateString()}</td>
+		  <td class="action-cell">
+			<button class="save-course" data-id="${c.id}">Сохранить</button>
+			<button class="del-course"  data-id="${c.id}">Удалить</button>
+		  </td>`
 			tbody.appendChild(tr)
 		})
+
+		// Сигнал о том, что курсы отрисованы
+		document.dispatchEvent(new CustomEvent('adminCourses:loaded'))
 	} catch (e) {
 		console.error(e)
 	}
@@ -307,7 +304,7 @@ async function initCourses() {
 			if (!res.ok) throw new Error(await res.text())
 			const { id } = await res.json()
 			alert('Курс создан, ID=' + id)
-			await initCourses() // перерисовать
+			await initCourses()
 		} catch (err) {
 			alert('Ошибка создания курса: ' + err.message)
 		}
@@ -315,15 +312,19 @@ async function initCourses() {
 
 	// 5. Делегирование кнопок
 	tbody.addEventListener('click', async e => {
-		const id = +e.target.dataset.id
+		const btn = e.target.closest('button')
+		if (!btn) return
+		const id = +btn.dataset.id
 		if (!id) return
 
-		if (e.target.classList.contains('save-course')) {
-			const title = document.querySelector(`.edit-title[data-id="${id}"]`).value
-			const desc = document.querySelector(`.edit-desc[data-id="${id}"]`).value
+		if (btn.classList.contains('save-course')) {
+			const inputs = document.querySelectorAll(
+				`input.edit-text[data-id="${id}"]`
+			)
+			const title = inputs[0].value.trim()
+			const desc = inputs[0].value.trim()
 			const sel = document.querySelector(`select.edit-teacher[data-id="${id}"]`)
 			const tid = sel.value ? +sel.value : null
-
 			try {
 				const res = await fetch('/api/admin/courses', {
 					method: 'PUT',
@@ -343,7 +344,7 @@ async function initCourses() {
 			}
 		}
 
-		if (e.target.classList.contains('del-course')) {
+		if (btn.classList.contains('del-course')) {
 			if (!confirm('Удалить курс?')) return
 			try {
 				const res = await fetch('/api/admin/courses', {
@@ -353,7 +354,7 @@ async function initCourses() {
 					body: JSON.stringify({ id }),
 				})
 				if (!res.ok) throw new Error(await res.text())
-				e.target.closest('tr').remove()
+				btn.closest('tr').remove()
 				alert('Курс удалён')
 			} catch (err) {
 				alert('Ошибка: ' + err.message)
@@ -462,13 +463,14 @@ async function renderGroupsTable() {
       <td>${g.id}</td>
       <td><input type="text" class="group-name" value="${g.name}" style="width:100%"></td>
       <td><select class="group-teacher" style="width:100%">${teacherOptions}</select></td>
-      <td>
-        <button class="save-group" title="Сохранить"><i class="fas fa-check"></i></button>
-        <button class="del-group"  title="Удалить"><i class="fas fa-trash"></i></button>
+      <td class="action-cell">
+        <button class="save-group" title="Сохранить">Сохранить</button>
+        <button class="del-group"  title="Удалить">Удалить</button>
       </td>
     `
 		tbody.appendChild(tr)
 	})
+	document.dispatchEvent(new CustomEvent('adminGroups:loaded'))
 }
 
 // -----------------------
